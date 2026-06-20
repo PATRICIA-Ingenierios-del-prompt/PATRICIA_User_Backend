@@ -1,0 +1,79 @@
+package com.escuelaing.usuarios.infrastructure.rest.controller;
+
+import com.escuelaing.usuarios.domain.model.Disponibilidad;
+import com.escuelaing.usuarios.domain.model.Perfil;
+import com.escuelaing.usuarios.domain.port.in.PerfilUseCase;
+import com.escuelaing.usuarios.infrastructure.rest.dto.request.ActualizarInteresesRequest;
+import com.escuelaing.usuarios.infrastructure.rest.dto.request.ActualizarPerfilRequest;
+import com.escuelaing.usuarios.infrastructure.rest.dto.response.DisponibilidadResponse;
+import com.escuelaing.usuarios.infrastructure.rest.dto.response.PerfilResponse;
+import com.escuelaing.usuarios.infrastructure.rest.mapper.PerfilRestMapper;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Endpoints públicos (JWT requerido) para gestión del perfil y de los
+ * intereses de un usuario.
+ */
+@RestController
+@RequestMapping("/api/v1/usuarios")
+@Tag(name = "Perfil", description = "Gestión del perfil de usuario")
+public class PerfilController {
+
+    private final PerfilUseCase perfilUseCase;
+    private final PerfilRestMapper mapper;
+
+    public PerfilController(PerfilUseCase perfilUseCase, PerfilRestMapper mapper) {
+        this.perfilUseCase = perfilUseCase;
+        this.mapper = mapper;
+    }
+
+    @GetMapping("/{id}/perfil")
+    @Operation(summary = "Obtiene el perfil de un usuario")
+    public ResponseEntity<PerfilResponse> obtenerPerfil(@PathVariable UUID id) {
+        Perfil perfil = perfilUseCase.obtenerPerfil(id);
+        return ResponseEntity.ok(mapper.toResponse(perfil));
+    }
+
+    @PutMapping("/{id}/perfil")
+    @Operation(summary = "Actualiza el perfil de un usuario")
+    public ResponseEntity<PerfilResponse> actualizarPerfil(@PathVariable UUID id,
+                                                            @Valid @RequestBody ActualizarPerfilRequest request) {
+        Perfil actualizado = perfilUseCase.actualizarPerfil(
+                id, request.bio(), request.carrera(), request.semestre(),
+                request.intereses(), request.disponibilidad());
+        return ResponseEntity.ok(mapper.toResponse(actualizado));
+    }
+
+    @GetMapping("/{id}/disponibilidad")
+    @Operation(summary = "Obtiene la disponibilidad actual de un usuario")
+    public ResponseEntity<DisponibilidadResponse> obtenerDisponibilidad(@PathVariable UUID id) {
+        Disponibilidad disponibilidad = perfilUseCase.obtenerDisponibilidad(id);
+        return ResponseEntity.ok(new DisponibilidadResponse(disponibilidad));
+    }
+
+    @GetMapping("/{id}/intereses")
+    @Operation(summary = "Obtiene los intereses de un usuario")
+    public ResponseEntity<List<String>> obtenerIntereses(@PathVariable UUID id) {
+        return ResponseEntity.ok(perfilUseCase.obtenerIntereses(id));
+    }
+
+    @PutMapping("/{id}/intereses")
+    @Operation(summary = "Actualiza los intereses de un usuario")
+    public ResponseEntity<List<String>> actualizarIntereses(@PathVariable UUID id,
+                                                              @Valid @RequestBody ActualizarInteresesRequest request) {
+        List<String> actualizados = perfilUseCase.actualizarIntereses(id, request.intereses());
+        return ResponseEntity.ok(actualizados);
+    }
+}
