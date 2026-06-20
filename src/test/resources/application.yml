@@ -1,0 +1,16 @@
+jwt:
+  secret: test-secret-test-secret-test-secret-test-secret
+
+security:
+  internal-api-key: test-internal-key
+
+reportes:
+  max-antes-suspension: 5
+
+clients:
+  auth-service:
+    url: http://localhost:8081
+
+spring:
+  cache:
+    type: simple
