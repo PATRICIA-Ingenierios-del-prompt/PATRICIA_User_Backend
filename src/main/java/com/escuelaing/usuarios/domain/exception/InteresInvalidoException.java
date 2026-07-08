@@ -9,7 +9,7 @@ public class InteresInvalidoException extends DomainException {
     private final String interes;
 
     public InteresInvalidoException(String interes) {
-        super("El interés '" + interes + "' no pertenece al catálogo de PATRICIA");
+        super("El interés '" + interes + "' no pertenece al catálogo de U Link");
         this.interes = interes;
     }
 

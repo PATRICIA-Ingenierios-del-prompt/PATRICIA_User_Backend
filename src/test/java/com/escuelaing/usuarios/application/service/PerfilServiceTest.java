@@ -3,6 +3,7 @@ package com.escuelaing.usuarios.application.service;
 import com.escuelaing.usuarios.domain.exception.InteresInvalidoException;
 import com.escuelaing.usuarios.domain.model.Disponibilidad;
 import com.escuelaing.usuarios.domain.model.Perfil;
+import com.escuelaing.usuarios.domain.port.out.FotoPerfilStoragePort;
 import com.escuelaing.usuarios.domain.port.out.PerfilRepositoryPort;
 import com.escuelaing.usuarios.domain.port.out.UsuarioEventPublisherPort;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,13 +35,16 @@ class PerfilServiceTest {
     @Mock
     private UsuarioEventPublisherPort eventPublisher;
 
+    @Mock
+    private FotoPerfilStoragePort fotoPerfilStorage;
+
     private PerfilService perfilService;
 
     private UUID usuarioId;
 
     @BeforeEach
     void setUp() {
-        perfilService = new PerfilService(perfilRepository, eventPublisher);
+        perfilService = new PerfilService(perfilRepository, eventPublisher, fotoPerfilStorage);
         usuarioId = UUID.randomUUID();
     }
 

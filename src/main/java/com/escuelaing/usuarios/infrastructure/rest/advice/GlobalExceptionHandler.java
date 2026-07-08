@@ -5,6 +5,7 @@ import com.escuelaing.usuarios.domain.exception.EstadoUsuarioInvalidoException;
 import com.escuelaing.usuarios.domain.exception.FotoNoEncontradaException;
 import com.escuelaing.usuarios.domain.exception.InteresInvalidoException;
 import com.escuelaing.usuarios.domain.exception.MaxFotosException;
+import com.escuelaing.usuarios.domain.exception.OnboardingException;
 import com.escuelaing.usuarios.domain.exception.PerfilNoEncontradoException;
 import com.escuelaing.usuarios.domain.exception.RolNoPermitidoException;
 import com.escuelaing.usuarios.domain.exception.UsuarioNoEncontradoException;
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
  * - DominioInvalidoException  -> 400
  * - MaxFotosException         -> 409
  * - EstadoUsuarioInvalidoException -> 409
+ * - OnboardingYaCompletadoException -> 409
  * - UsuarioNoEncontradoException / PerfilNoEncontradoException / FotoNoEncontradaException -> 404
  * - RolNoPermitidoException / AccessDeniedException -> 403
  */
@@ -55,6 +57,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(EstadoUsuarioInvalidoException.class)
     public ResponseEntity<ErrorResponse> handleEstadoInvalido(EstadoUsuarioInvalidoException ex, HttpServletRequest req) {
         return build(HttpStatus.CONFLICT, "EstadoUsuarioInvalido", ex.getMessage());
+    }
+
+    @ExceptionHandler(OnboardingException.class)
+    public ResponseEntity<ErrorResponse> handleOnboardingYaCompletado(OnboardingException ex, HttpServletRequest req) {
+        return build(HttpStatus.CONFLICT, "OnboardingYaCompletado", ex.getMessage());
     }
 
     @ExceptionHandler(UsuarioNoEncontradoException.class)

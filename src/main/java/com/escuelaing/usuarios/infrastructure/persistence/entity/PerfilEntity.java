@@ -1,6 +1,7 @@
 package com.escuelaing.usuarios.infrastructure.persistence.entity;
 
 import com.escuelaing.usuarios.domain.model.Disponibilidad;
+import com.escuelaing.usuarios.domain.model.Genero;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -19,6 +20,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -42,12 +44,26 @@ public class PerfilEntity {
     @Column(name = "usuario_id", nullable = false, unique = true)
     private UUID usuarioId;
 
+    private String nombre;
+
+    private String apellidos;
+
     @Column(length = 500)
     private String bio;
 
     private String carrera;
 
+    @Column(name = "segunda_carrera")
+    private String segundaCarrera;
+
     private Integer semestre;
+
+    @Column(name = "fecha_nacimiento")
+    private LocalDate fechaNacimiento;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private Genero genero;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "perfil_intereses", joinColumns = @JoinColumn(name = "perfil_id"))
@@ -62,6 +78,10 @@ public class PerfilEntity {
 
     @Column(name = "url_foto_perfil")
     private String urlFotoPerfil;
+
+    @Column(name = "onboarding_completo", nullable = false)
+    @Builder.Default
+    private boolean onboardingCompleto = false;
 
     @Column(name = "fecha_actualizacion", nullable = false)
     private Instant fechaActualizacion;
