@@ -2,8 +2,10 @@ package com.escuelaing.usuarios.domain.model;
 
 import com.escuelaing.usuarios.domain.exception.DominioInvalidoException;
 import com.escuelaing.usuarios.domain.exception.InteresInvalidoException;
+import com.escuelaing.usuarios.domain.exception.OnboardingException;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -12,6 +14,10 @@ import java.util.UUID;
 /**
  * Perfil de usuario (relación 1:1 con Usuario). Contiene información social
  * y académica, así como la lista de intereses validados contra el catálogo.
+ *
+ * El nombre/apellidos que vive aquí es el declarado por el propio usuario
+ * durante el onboarding y es independiente del `nombre` de {@link Usuario}
+ * (que viene de SSO/Microsoft).
  */
 public class Perfil {
 
@@ -19,45 +25,107 @@ public class Perfil {
 
     private UUID id;
     private UUID usuarioId;
+    private String nombre;
+    private String apellidos;
     private String bio;
     private String carrera;
+    private String segundaCarrera;
     private Integer semestre;
+    private LocalDate fechaNacimiento;
+    private Genero genero;
     private List<String> intereses;
     private Disponibilidad disponibilidad;
     private String urlFotoPerfil;
+    private boolean onboardingCompleto;
     private Instant fechaActualizacion;
 
     protected Perfil() {
         // Para reconstrucción desde infraestructura.
     }
 
-    private Perfil(UUID id, UUID usuarioId, String bio, String carrera, Integer semestre,
-                    List<String> intereses, Disponibilidad disponibilidad, String urlFotoPerfil,
-                    Instant fechaActualizacion) {
+    private Perfil(UUID id, UUID usuarioId, String nombre, String apellidos, String bio, String carrera,
+                   String segundaCarrera, Integer semestre, LocalDate fechaNacimiento, Genero genero,
+                   List<String> intereses, Disponibilidad disponibilidad, String urlFotoPerfil,
+                   boolean onboardingCompleto, Instant fechaActualizacion) {
         this.id = id;
         this.usuarioId = usuarioId;
+        this.nombre = nombre;
+        this.apellidos = apellidos;
         this.bio = bio;
         this.carrera = carrera;
+        this.segundaCarrera = segundaCarrera;
         this.semestre = semestre;
+        this.fechaNacimiento = fechaNacimiento;
+        this.genero = genero;
         this.intereses = intereses;
         this.disponibilidad = disponibilidad;
         this.urlFotoPerfil = urlFotoPerfil;
+        this.onboardingCompleto = onboardingCompleto;
         this.fechaActualizacion = fechaActualizacion;
     }
 
     public static Perfil crearVacio(UUID usuarioId) {
         Objects.requireNonNull(usuarioId, "usuarioId no puede ser nulo");
-        return new Perfil(UUID.randomUUID(), usuarioId, null, null, null,
-                new ArrayList<>(), Disponibilidad.DISPONIBLE, null, Instant.now());
+        return new Perfil(UUID.randomUUID(), usuarioId, null, null, null, null, null, null, null, null,
+                new ArrayList<>(), Disponibilidad.DISPONIBLE, null, false, Instant.now());
     }
 
-    public static Perfil reconstruir(UUID id, UUID usuarioId, String bio, String carrera,
-                                      Integer semestre, List<String> intereses,
-                                      Disponibilidad disponibilidad, String urlFotoPerfil,
-                                      Instant fechaActualizacion) {
-        return new Perfil(id, usuarioId, bio, carrera, semestre,
+    public static Perfil reconstruir(UUID id, UUID usuarioId, String nombre, String apellidos, String bio,
+                                     String carrera, String segundaCarrera, Integer semestre,
+                                     LocalDate fechaNacimiento, Genero genero, List<String> intereses,
+                                     Disponibilidad disponibilidad, String urlFotoPerfil,
+                                     boolean onboardingCompleto, Instant fechaActualizacion) {
+        return new Perfil(id, usuarioId, nombre, apellidos, bio, carrera, segundaCarrera, semestre,
+                fechaNacimiento, genero,
                 intereses == null ? new ArrayList<>() : new ArrayList<>(intereses),
-                disponibilidad, urlFotoPerfil, fechaActualizacion);
+                disponibilidad, urlFotoPerfil, onboardingCompleto, fechaActualizacion);
+    }
+
+    /**
+     * Completa el onboarding por primera vez. Es una operación de una sola
+     * vez: si el perfil ya estaba marcado como onboarded, lanza
+     * {@link OnboardingException}.
+     *
+     * Los campos nombre, apellidos, carrera, semestre e intereses son
+     * obligatorios; segundaCarrera, fechaNacimiento, genero y la foto son
+     * opcionales.
+     */
+    public void completarOnboarding(String nombre, String apellidos, String carrera, String segundaCarrera,
+                                    Integer semestre, LocalDate fechaNacimiento, Genero genero,
+                                    String urlFotoPerfil, List<String> intereses) {
+        if (this.onboardingCompleto) {
+            throw new OnboardingException(this.usuarioId);
+        }
+        if (nombre == null || nombre.isBlank()) {
+            throw new DominioInvalidoException("nombre es obligatorio para completar el onboarding");
+        }
+        if (apellidos == null || apellidos.isBlank()) {
+            throw new DominioInvalidoException("apellidos es obligatorio para completar el onboarding");
+        }
+        if (carrera == null || carrera.isBlank()) {
+            throw new DominioInvalidoException("carrera es obligatoria para completar el onboarding");
+        }
+        if (semestre == null) {
+            throw new DominioInvalidoException("semestre es obligatorio para completar el onboarding");
+        }
+        if (intereses == null || intereses.isEmpty()) {
+            throw new DominioInvalidoException("debe seleccionar al menos un interés para completar el onboarding");
+        }
+        validarIntereses(intereses);
+
+        this.nombre = nombre;
+        this.apellidos = apellidos;
+        this.carrera = carrera;
+        this.segundaCarrera = segundaCarrera;
+        this.semestre = semestre;
+        this.fechaNacimiento = fechaNacimiento;
+        this.genero = genero;
+        this.intereses = new ArrayList<>(intereses);
+        if (urlFotoPerfil != null && !urlFotoPerfil.isBlank()) {
+            this.urlFotoPerfil = urlFotoPerfil;
+        }
+        this.onboardingCompleto = true;
+        this.fechaActualizacion = Instant.now();
     }
 
     /**
@@ -66,7 +134,7 @@ public class Perfil {
      * @return la lista de nombres de campos que efectivamente cambiaron.
      */
     public List<String> actualizar(String bio, String carrera, Integer semestre,
-                                    List<String> intereses, Disponibilidad disponibilidad) {
+                                   List<String> intereses, Disponibilidad disponibilidad) {
         List<String> camposModificados = new ArrayList<>();
 
         if (bio != null && bio.length() > BIO_MAX_LENGTH) {
@@ -155,6 +223,14 @@ public class Perfil {
         return usuarioId;
     }
 
+    public String getNombre() {
+        return nombre;
+    }
+
+    public String getApellidos() {
+        return apellidos;
+    }
+
     public String getBio() {
         return bio;
     }
@@ -163,8 +239,24 @@ public class Perfil {
         return carrera;
     }
 
+    public String getSegundaCarrera() {
+        return segundaCarrera;
+    }
+
     public Integer getSemestre() {
         return semestre;
+    }
+
+    public LocalDate getFechaNacimiento() {
+        return fechaNacimiento;
+    }
+
+    public Genero getGenero() {
+        return genero;
+    }
+
+    public boolean isOnboardingCompleto() {
+        return onboardingCompleto;
     }
 
     public List<String> getIntereses() {

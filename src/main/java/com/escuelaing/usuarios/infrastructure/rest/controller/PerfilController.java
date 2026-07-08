@@ -47,13 +47,22 @@ public class PerfilController {
     }
 
     @PutMapping("/{id}/perfil")
-    @Operation(summary = "Actualiza el perfil de un usuario")
+    @Operation(summary = "Actualiza el perfil de un usuario, o completa el onboarding por primera vez "
+            + "cuando onboardingCompleto=true")
     public ResponseEntity<PerfilResponse> actualizarPerfil(@PathVariable UUID id,
-                                                            @Valid @RequestBody ActualizarPerfilRequest request) {
-        Perfil actualizado = perfilUseCase.actualizarPerfil(
-                id, request.bio(), request.carrera(), request.semestre(),
-                request.intereses(), request.disponibilidad());
-        return ResponseEntity.ok(mapper.toResponse(actualizado));
+                                                           @Valid @RequestBody ActualizarPerfilRequest request) {
+        Perfil resultado;
+        if (Boolean.TRUE.equals(request.onboardingCompleto())) {
+            resultado = perfilUseCase.completarOnboarding(
+                    id, request.nombre(), request.apellidos(), request.carrera(),
+                    request.segundaCarrera(), request.semestre(), request.fechaNacimiento(),
+                    request.genero(), request.foto(), request.intereses());
+        } else {
+            resultado = perfilUseCase.actualizarPerfil(
+                    id, request.bio(), request.carrera(), request.semestre(),
+                    request.intereses(), request.disponibilidad());
+        }
+        return ResponseEntity.ok(mapper.toResponse(resultado));
     }
 
     @GetMapping("/{id}/disponibilidad")
@@ -72,7 +81,7 @@ public class PerfilController {
     @PutMapping("/{id}/intereses")
     @Operation(summary = "Actualiza los intereses de un usuario")
     public ResponseEntity<List<String>> actualizarIntereses(@PathVariable UUID id,
-                                                              @Valid @RequestBody ActualizarInteresesRequest request) {
+                                                            @Valid @RequestBody ActualizarInteresesRequest request) {
         List<String> actualizados = perfilUseCase.actualizarIntereses(id, request.intereses());
         return ResponseEntity.ok(actualizados);
     }

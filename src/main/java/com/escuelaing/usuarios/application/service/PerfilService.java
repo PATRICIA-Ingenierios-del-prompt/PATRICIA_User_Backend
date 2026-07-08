@@ -2,8 +2,10 @@ package com.escuelaing.usuarios.application.service;
 
 import com.escuelaing.usuarios.domain.exception.PerfilNoEncontradoException;
 import com.escuelaing.usuarios.domain.model.Disponibilidad;
+import com.escuelaing.usuarios.domain.model.Genero;
 import com.escuelaing.usuarios.domain.model.Perfil;
 import com.escuelaing.usuarios.domain.port.in.PerfilUseCase;
+import com.escuelaing.usuarios.domain.port.out.FotoPerfilStoragePort;
 import com.escuelaing.usuarios.domain.port.out.PerfilRepositoryPort;
 import com.escuelaing.usuarios.domain.port.out.UsuarioEventPublisherPort;
 import org.springframework.cache.annotation.CacheEvict;
@@ -11,6 +13,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,25 +29,34 @@ public class PerfilService implements PerfilUseCase {
 
     private final PerfilRepositoryPort perfilRepository;
     private final UsuarioEventPublisherPort eventPublisher;
+    private final FotoPerfilStoragePort fotoPerfilStorage;
 
     public PerfilService(PerfilRepositoryPort perfilRepository,
-                          UsuarioEventPublisherPort eventPublisher) {
+                         UsuarioEventPublisherPort eventPublisher,
+                         FotoPerfilStoragePort fotoPerfilStorage) {
         this.perfilRepository = perfilRepository;
         this.eventPublisher = eventPublisher;
+        this.fotoPerfilStorage = fotoPerfilStorage;
     }
 
     @Override
     @Transactional(readOnly = true)
     @Cacheable(value = "perfiles", key = "#usuarioId")
     public Perfil obtenerPerfil(UUID usuarioId) {
-        return perfilRepository.buscarPorUsuarioId(usuarioId)
+        Perfil perfil = perfilRepository.buscarPorUsuarioId(usuarioId)
                 .orElseThrow(() -> new PerfilNoEncontradoException(usuarioId));
+        // El frontend usa este GET para decidir si mostrar el onboarding:
+        // mientras no esté completo, se trata igual que "no existe" (404).
+        if (!perfil.isOnboardingCompleto()) {
+            throw new PerfilNoEncontradoException(usuarioId);
+        }
+        return perfil;
     }
 
     @Override
     @CacheEvict(value = "perfiles", key = "#usuarioId")
     public Perfil actualizarPerfil(UUID usuarioId, String bio, String carrera, Integer semestre,
-                                    List<String> intereses, Disponibilidad disponibilidad) {
+                                   List<String> intereses, Disponibilidad disponibilidad) {
         Perfil perfil = perfilRepository.buscarPorUsuarioId(usuarioId)
                 .orElseThrow(() -> new PerfilNoEncontradoException(usuarioId));
 
@@ -103,5 +115,30 @@ public class PerfilService implements PerfilUseCase {
         eventPublisher.publicarInteresesActualizados(usuarioId, actualizado.getIntereses());
 
         return actualizado.getIntereses();
+    }
+
+    @Override
+    @CacheEvict(value = "perfiles", key = "#usuarioId")
+    public Perfil completarOnboarding(UUID usuarioId, String nombre, String apellidos, String carrera,
+                                      String segundaCarrera, Integer semestre, LocalDate fechaNacimiento,
+                                      Genero genero, String fotoDataUrl, List<String> intereses) {
+        Perfil perfil = perfilRepository.buscarPorUsuarioId(usuarioId)
+                .orElseThrow(() -> new PerfilNoEncontradoException(usuarioId));
+
+        String urlFotoPerfil = null;
+        if (fotoDataUrl != null && !fotoDataUrl.isBlank()) {
+            urlFotoPerfil = fotoPerfilStorage.subirFotoPerfil(usuarioId, fotoDataUrl);
+        }
+
+        perfil.completarOnboarding(nombre, apellidos, carrera, segundaCarrera, semestre,
+                fechaNacimiento, genero, urlFotoPerfil, intereses);
+
+        Perfil guardado = perfilRepository.guardar(perfil);
+
+        eventPublisher.publicarPerfilActualizado(usuarioId,
+                List.of("nombre", "apellidos", "carrera", "semestre", "intereses", "onboardingCompleto"));
+        eventPublisher.publicarInteresesActualizados(usuarioId, guardado.getIntereses());
+
+        return guardado;
     }
 }

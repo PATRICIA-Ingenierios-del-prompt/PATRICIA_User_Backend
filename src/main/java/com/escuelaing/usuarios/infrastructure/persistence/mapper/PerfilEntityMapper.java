@@ -20,12 +20,18 @@ public abstract class PerfilEntityMapper {
         return Perfil.reconstruir(
                 entity.getId(),
                 entity.getUsuarioId(),
+                entity.getNombre(),
+                entity.getApellidos(),
                 entity.getBio(),
                 entity.getCarrera(),
+                entity.getSegundaCarrera(),
                 entity.getSemestre(),
+                entity.getFechaNacimiento(),
+                entity.getGenero(),
                 entity.getIntereses(),
                 entity.getDisponibilidad(),
                 entity.getUrlFotoPerfil(),
+                entity.isOnboardingCompleto(),
                 entity.getFechaActualizacion()
         );
     }
@@ -37,12 +43,18 @@ public abstract class PerfilEntityMapper {
         return PerfilEntity.builder()
                 .id(perfil.getId())
                 .usuarioId(perfil.getUsuarioId())
+                .nombre(perfil.getNombre())
+                .apellidos(perfil.getApellidos())
                 .bio(perfil.getBio())
                 .carrera(perfil.getCarrera())
+                .segundaCarrera(perfil.getSegundaCarrera())
                 .semestre(perfil.getSemestre())
+                .fechaNacimiento(perfil.getFechaNacimiento())
+                .genero(perfil.getGenero())
                 .intereses(new ArrayList<>(perfil.getIntereses()))
                 .disponibilidad(perfil.getDisponibilidad())
                 .urlFotoPerfil(perfil.getUrlFotoPerfil())
+                .onboardingCompleto(perfil.isOnboardingCompleto())
                 .fechaActualizacion(perfil.getFechaActualizacion())
                 .build();
     }
