@@ -1,7 +1,7 @@
 package com.escuelaing.usuarios.infrastructure.persistence.adapter;
 
 import com.escuelaing.usuarios.domain.model.Usuario;
-import com.escuelaing.usuarios.domain.port.out.UsuarioRepositoryPort;
+import com.escuelaing.usuarios.domain.port.outbound.UsuarioRepositoryPort;
 import com.escuelaing.usuarios.infrastructure.persistence.entity.UsuarioEntity;
 import com.escuelaing.usuarios.infrastructure.persistence.mapper.UsuarioEntityMapper;
 import com.escuelaing.usuarios.infrastructure.persistence.repository.UsuarioJpaRepository;

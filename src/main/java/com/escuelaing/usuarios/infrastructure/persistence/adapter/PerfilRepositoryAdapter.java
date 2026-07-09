@@ -1,7 +1,7 @@
 package com.escuelaing.usuarios.infrastructure.persistence.adapter;
 
 import com.escuelaing.usuarios.domain.model.Perfil;
-import com.escuelaing.usuarios.domain.port.out.PerfilRepositoryPort;
+import com.escuelaing.usuarios.domain.port.outbound.PerfilRepositoryPort;
 import com.escuelaing.usuarios.infrastructure.persistence.entity.PerfilEntity;
 import com.escuelaing.usuarios.infrastructure.persistence.mapper.PerfilEntityMapper;
 import com.escuelaing.usuarios.infrastructure.persistence.repository.PerfilJpaRepository;

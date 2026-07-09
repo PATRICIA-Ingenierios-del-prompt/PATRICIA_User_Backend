@@ -1,7 +1,7 @@
 package com.escuelaing.usuarios.infrastructure.persistence.adapter;
 
 import com.escuelaing.usuarios.domain.model.Foto;
-import com.escuelaing.usuarios.domain.port.out.FotoRepositoryPort;
+import com.escuelaing.usuarios.domain.port.outbound.FotoRepositoryPort;
 import com.escuelaing.usuarios.infrastructure.persistence.entity.FotoEntity;
 import com.escuelaing.usuarios.infrastructure.persistence.mapper.FotoEntityMapper;
 import com.escuelaing.usuarios.infrastructure.persistence.repository.FotoJpaRepository;

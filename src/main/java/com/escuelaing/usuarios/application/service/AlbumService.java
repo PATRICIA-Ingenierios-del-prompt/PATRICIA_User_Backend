@@ -4,8 +4,8 @@ import com.escuelaing.usuarios.domain.exception.FotoNoEncontradaException;
 import com.escuelaing.usuarios.domain.model.AlbumFotos;
 import com.escuelaing.usuarios.domain.model.Foto;
 import com.escuelaing.usuarios.domain.port.in.AlbumUseCase;
-import com.escuelaing.usuarios.domain.port.out.FotoRepositoryPort;
-import com.escuelaing.usuarios.domain.port.out.UsuarioEventPublisherPort;
+import com.escuelaing.usuarios.domain.port.outbound.FotoRepositoryPort;
+import com.escuelaing.usuarios.domain.port.outbound.UsuarioEventPublisherPort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
