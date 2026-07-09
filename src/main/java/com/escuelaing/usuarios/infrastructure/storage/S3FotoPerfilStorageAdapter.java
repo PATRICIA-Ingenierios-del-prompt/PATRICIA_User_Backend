@@ -1,7 +1,7 @@
 package com.escuelaing.usuarios.infrastructure.storage;
 
 import com.escuelaing.usuarios.domain.exception.DominioInvalidoException;
-import com.escuelaing.usuarios.domain.port.out.FotoPerfilStoragePort;
+import com.escuelaing.usuarios.domain.port.outbound.FotoPerfilStoragePort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;

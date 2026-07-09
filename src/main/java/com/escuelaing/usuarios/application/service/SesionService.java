@@ -3,7 +3,7 @@ package com.escuelaing.usuarios.application.service;
 import com.escuelaing.usuarios.domain.exception.UsuarioNoEncontradoException;
 import com.escuelaing.usuarios.domain.model.Usuario;
 import com.escuelaing.usuarios.domain.port.in.SesionUseCase;
-import com.escuelaing.usuarios.domain.port.out.UsuarioRepositoryPort;
+import com.escuelaing.usuarios.domain.port.outbound.UsuarioRepositoryPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

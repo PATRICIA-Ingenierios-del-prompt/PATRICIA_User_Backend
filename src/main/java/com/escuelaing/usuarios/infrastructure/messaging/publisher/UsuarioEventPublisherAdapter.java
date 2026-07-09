@@ -2,7 +2,7 @@ package com.escuelaing.usuarios.infrastructure.messaging.publisher;
 
 import com.escuelaing.usuarios.domain.model.MotivoSuspension;
 import com.escuelaing.usuarios.domain.model.OrigenUsuario;
-import com.escuelaing.usuarios.domain.port.out.UsuarioEventPublisherPort;
+import com.escuelaing.usuarios.domain.port.outbound.UsuarioEventPublisherPort;
 import com.escuelaing.usuarios.infrastructure.messaging.config.RabbitMqConfig;
 import com.escuelaing.usuarios.infrastructure.messaging.event.AlbumFotoPayload;
 import com.escuelaing.usuarios.infrastructure.messaging.event.CamposModificadosPayload;

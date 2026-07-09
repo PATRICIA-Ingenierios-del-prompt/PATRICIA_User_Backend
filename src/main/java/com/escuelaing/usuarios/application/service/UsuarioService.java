@@ -7,9 +7,9 @@ import com.escuelaing.usuarios.domain.model.Perfil;
 import com.escuelaing.usuarios.domain.model.RolPlataforma;
 import com.escuelaing.usuarios.domain.model.Usuario;
 import com.escuelaing.usuarios.domain.port.in.UsuarioUseCase;
-import com.escuelaing.usuarios.domain.port.out.PerfilRepositoryPort;
-import com.escuelaing.usuarios.domain.port.out.UsuarioEventPublisherPort;
-import com.escuelaing.usuarios.domain.port.out.UsuarioRepositoryPort;
+import com.escuelaing.usuarios.domain.port.outbound.PerfilRepositoryPort;
+import com.escuelaing.usuarios.domain.port.outbound.UsuarioEventPublisherPort;
+import com.escuelaing.usuarios.domain.port.outbound.UsuarioRepositoryPort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

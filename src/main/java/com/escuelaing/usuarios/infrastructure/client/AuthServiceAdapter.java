@@ -1,6 +1,6 @@
 package com.escuelaing.usuarios.infrastructure.client;
 
-import com.escuelaing.usuarios.domain.port.out.AuthServicePort;
+import com.escuelaing.usuarios.domain.port.outbound.AuthServicePort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;

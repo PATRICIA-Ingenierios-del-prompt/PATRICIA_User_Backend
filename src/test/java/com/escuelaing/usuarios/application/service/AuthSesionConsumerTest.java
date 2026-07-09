@@ -2,7 +2,7 @@ package com.escuelaing.usuarios.application.service;
 
 import com.escuelaing.usuarios.domain.exception.UsuarioNoEncontradoException;
 import com.escuelaing.usuarios.domain.model.Usuario;
-import com.escuelaing.usuarios.domain.port.out.UsuarioRepositoryPort;
+import com.escuelaing.usuarios.domain.port.outbound.UsuarioRepositoryPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
