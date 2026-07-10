@@ -6,9 +6,9 @@ spring:
     name: usuarios-service
 
   datasource:
-    url: ${POSTGRES_URL}
-    username: ${POSTGRES_USER}
-    password: ${POSTGRES_PASSWORD}
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
 
   jpa:
     hibernate:
@@ -23,15 +23,16 @@ spring:
     locations: classpath:db/migration
 
   rabbitmq:
-    host: ${RABBITMQ_HOST}
-    port: ${RABBITMQ_PORT}
-    username: ${RABBITMQ_USER}
-    password: ${RABBITMQ_PASS}
+    addresses: ${SPRING_RABBITMQ_ADDRESSES}
+    username: ${SPRING_RABBITMQ_USERNAME}
+    password: ${SPRING_RABBITMQ_PASSWORD}
 
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      ssl:
+        enabled: true
 
   cache:
     type: redis
@@ -51,9 +52,7 @@ clients:
   auth-service:
     url: ${AUTH_SERVICE_URL:http://localhost:8081}
 
-# Almacenamiento de fotos de perfil (onboarding). Aún no desplegado: mientras
-# aws.s3.bucket esté vacío, subir una foto en el onboarding fallará con un
-# error claro en vez de romper el arranque de la app.
+
 aws:
   s3:
     bucket: ${AWS_S3_BUCKET:}
@@ -75,7 +74,8 @@ management:
   endpoint:
     health:
       show-details: when-authorized
-
+      probes:
+        enabled: true
 logging:
   level:
     com.escuelaing.usuarios: INFO
