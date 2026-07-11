@@ -1,5 +1,6 @@
 package com.escuelaing.usuarios.application.service;
 
+import com.escuelaing.usuarios.domain.exception.FotoNoEncontradaException;
 import com.escuelaing.usuarios.domain.exception.MaxFotosException;
 import com.escuelaing.usuarios.domain.model.Foto;
 import com.escuelaing.usuarios.domain.port.outbound.FotoRepositoryPort;
@@ -18,7 +19,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AlbumServiceTest {
@@ -49,6 +50,17 @@ class AlbumServiceTest {
     }
 
     @Test
+    void listarFotos_retornaFotosDelRepositorio() {
+        List<Foto> fotos = fotosExistentes(2);
+        when(fotoRepository.buscarPorUsuarioId(usuarioId)).thenReturn(fotos);
+
+        List<Foto> resultado = albumService.listarFotos(usuarioId);
+
+        assertThat(resultado).containsExactlyElementsOf(fotos);
+        verify(fotoRepository, times(1)).buscarPorUsuarioId(usuarioId);
+    }
+
+    @Test
     void agregarFoto_laSeptimaFoto_lanzaMaxFotosException() {
         when(fotoRepository.buscarPorUsuarioId(usuarioId)).thenReturn(fotosExistentes(6));
 
@@ -64,8 +76,36 @@ class AlbumServiceTest {
         Foto resultado = albumService.agregarFoto(usuarioId, "https://fotos/6.jpg");
 
         assertThat(resultado.getOrden()).isEqualTo(6);
-        org.mockito.Mockito.verify(eventPublisher)
-                .publicarFotoAgregada(usuarioId, resultado.getId(), 6);
+        verify(eventPublisher).publicarFotoAgregada(usuarioId, resultado.getId(), 6);
+    }
+
+    @Test
+    void actualizarFoto_fotoNoExiste_lanzaFotoNoEncontradaException() {
+        when(fotoRepository.buscarPorUsuarioId(usuarioId)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> albumService.actualizarFoto(usuarioId, UUID.randomUUID(), "https://fotos/updated.jpg"))
+                .isInstanceOf(FotoNoEncontradaException.class);
+    }
+
+    @Test
+    void actualizarFoto_fotoExiste_actualizaUrlCorrectamente() {
+        List<Foto> existentes = fotosExistentes(2);
+        UUID fotoId = existentes.get(0).getId();
+        when(fotoRepository.buscarPorUsuarioId(usuarioId)).thenReturn(existentes);
+        when(fotoRepository.guardar(any(Foto.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Foto resultado = albumService.actualizarFoto(usuarioId, fotoId, "https://fotos/updated.jpg");
+
+        assertThat(resultado.getUrlFoto()).isEqualTo("https://fotos/updated.jpg");
+        verify(fotoRepository, times(1)).guardar(any(Foto.class));
+    }
+
+    @Test
+    void eliminarFoto_fotoNoExiste_lanzaFotoNoEncontradaException() {
+        when(fotoRepository.buscarPorUsuarioId(usuarioId)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> albumService.eliminarFoto(usuarioId, UUID.randomUUID()))
+                .isInstanceOf(FotoNoEncontradaException.class);
     }
 
     @Test
@@ -78,16 +118,15 @@ class AlbumServiceTest {
         albumService.eliminarFoto(usuarioId, fotoPrincipalId);
 
         ArgumentCaptor<List<Foto>> captor = ArgumentCaptor.forClass(List.class);
-        org.mockito.Mockito.verify(fotoRepository).guardarTodas(captor.capture());
+        verify(fotoRepository).guardarTodas(captor.capture());
 
         List<Foto> reordenadas = captor.getValue();
         assertThat(reordenadas).hasSize(2);
-        // La foto que antes tenía orden 2 ahora debe ser la principal (orden 1).
         assertThat(reordenadas.get(0).getOrden()).isEqualTo(1);
         assertThat(reordenadas.get(0).esPrincipal()).isTrue();
 
-        org.mockito.Mockito.verify(fotoRepository).eliminar(fotoPrincipalId);
-        org.mockito.Mockito.verify(eventPublisher).publicarFotoEliminada(usuarioId, fotoPrincipalId);
+        verify(fotoRepository).eliminar(fotoPrincipalId);
+        verify(eventPublisher).publicarFotoEliminada(usuarioId, fotoPrincipalId);
     }
 
     @Test
@@ -100,7 +139,7 @@ class AlbumServiceTest {
         albumService.eliminarFoto(usuarioId, fotoSecundariaId);
 
         ArgumentCaptor<List<Foto>> captor = ArgumentCaptor.forClass(List.class);
-        org.mockito.Mockito.verify(fotoRepository).guardarTodas(captor.capture());
+        verify(fotoRepository).guardarTodas(captor.capture());
 
         List<Foto> reordenadas = captor.getValue();
         assertThat(reordenadas).hasSize(2);

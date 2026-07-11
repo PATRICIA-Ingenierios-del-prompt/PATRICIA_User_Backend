@@ -272,7 +272,16 @@
                                 <exclude>**/dto/**</exclude>
                                 <exclude>**/*Entity.class</exclude>
                                 <exclude>**/*Mapper.class</exclude>
+                                <exclude>**/*MapperImpl.class</exclude>
                                 <exclude>**/config/**</exclude>
+                                <exclude>**/*Adapter.class</exclude>
+                                <exclude>**/*Consumer.class</exclude>
+                                <exclude>**/event/**</exclude>
+                                <exclude>**/exception/**</exclude>
+                                <exclude>**/security/**</exclude>
+                                <exclude>**/domain/model/**</exclude>
+                                <exclude>**/domain/port/**</exclude>
+                                <exclude>**/advice/**</exclude>
                             </excludes>
                         </configuration>
                         <executions>

@@ -1,7 +1,9 @@
 package com.escuelaing.usuarios.application.service;
 
 import com.escuelaing.usuarios.domain.exception.InteresInvalidoException;
+import com.escuelaing.usuarios.domain.exception.PerfilNoEncontradoException;
 import com.escuelaing.usuarios.domain.model.Disponibilidad;
+import com.escuelaing.usuarios.domain.model.Genero;
 import com.escuelaing.usuarios.domain.model.Perfil;
 import com.escuelaing.usuarios.domain.port.outbound.FotoPerfilStoragePort;
 import com.escuelaing.usuarios.domain.port.outbound.PerfilRepositoryPort;
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,10 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PerfilServiceTest {
@@ -49,6 +49,45 @@ class PerfilServiceTest {
     }
 
     @Test
+    void obtenerPerfil_perfilNoExiste_lanzaPerfilNoEncontradoException() {
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> perfilService.obtenerPerfil(usuarioId))
+                .isInstanceOf(PerfilNoEncontradoException.class);
+    }
+
+    @Test
+    void obtenerPerfil_onboardingIncompleto_lanzaPerfilNoEncontradoException() {
+        Perfil perfil = Perfil.crearVacio(usuarioId);
+        // Por defecto, onboardingCompleto es false en perfil recién creado
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.of(perfil));
+
+        assertThatThrownBy(() -> perfilService.obtenerPerfil(usuarioId))
+                .isInstanceOf(PerfilNoEncontradoException.class);
+    }
+
+    @Test
+    void obtenerPerfil_onboardingCompleto_retornaPerfil() {
+        Perfil perfil = Perfil.crearVacio(usuarioId);
+        perfil.completarOnboarding("Nombre", "Apellidos", "Sistemas", null, 5,
+                LocalDate.of(2000, 1, 1), Genero.MASCULINO, "url-foto", List.of("Gimnasio"));
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.of(perfil));
+
+        Perfil resultado = perfilService.obtenerPerfil(usuarioId);
+
+        assertThat(resultado).isEqualTo(perfil);
+    }
+
+    @Test
+    void actualizarPerfil_perfilNoExiste_lanzaPerfilNoEncontradoException() {
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() ->
+                perfilService.actualizarPerfil(usuarioId, "Bio", "Sistemas", 5, List.of("Gimnasio"), Disponibilidad.OCUPADO))
+                .isInstanceOf(PerfilNoEncontradoException.class);
+    }
+
+    @Test
     void actualizarPerfil_publicaPerfilActualizado_cuandoHayCambios() {
         Perfil perfil = Perfil.crearVacio(usuarioId);
         when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.of(perfil));
@@ -65,7 +104,6 @@ class PerfilServiceTest {
         Perfil perfil = Perfil.crearVacio(usuarioId);
         when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.of(perfil));
 
-        // Mismos valores que ya tiene el perfil recién creado (disponibilidad DISPONIBLE, resto null/vacío).
         perfilService.actualizarPerfil(usuarioId, null, null, null, List.of(), Disponibilidad.DISPONIBLE);
 
         verify(eventPublisher, never()).publicarPerfilActualizado(any(), anyList());
@@ -84,6 +122,63 @@ class PerfilServiceTest {
 
         verify(perfilRepository, never()).guardar(any());
         verify(eventPublisher, never()).publicarPerfilActualizado(any(), anyList());
+    }
+
+    @Test
+    void obtenerDisponibilidad_perfilNoExiste_lanzaPerfilNoEncontradoException() {
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> perfilService.obtenerDisponibilidad(usuarioId))
+                .isInstanceOf(PerfilNoEncontradoException.class);
+    }
+
+    @Test
+    void obtenerDisponibilidad_perfilExiste_retornaDisponibilidad() {
+        Perfil perfil = Perfil.crearVacio(usuarioId);
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.of(perfil));
+
+        Disponibilidad resultado = perfilService.obtenerDisponibilidad(usuarioId);
+
+        assertThat(resultado).isEqualTo(Disponibilidad.DISPONIBLE);
+    }
+
+    @Test
+    void obtenerIntereses_perfilNoExiste_lanzaPerfilNoEncontradoException() {
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> perfilService.obtenerIntereses(usuarioId))
+                .isInstanceOf(PerfilNoEncontradoException.class);
+    }
+
+    @Test
+    void obtenerIntereses_perfilExiste_retornaIntereses() {
+        Perfil perfil = Perfil.crearVacio(usuarioId);
+        perfil.actualizarIntereses(List.of("Gimnasio"));
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.of(perfil));
+
+        List<String> resultado = perfilService.obtenerIntereses(usuarioId);
+
+        assertThat(resultado).containsExactly("Gimnasio");
+    }
+
+    @Test
+    void actualizarIntereses_perfilNoExiste_lanzaPerfilNoEncontradoException() {
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> perfilService.actualizarIntereses(usuarioId, List.of("Gimnasio")))
+                .isInstanceOf(PerfilNoEncontradoException.class);
+    }
+
+    @Test
+    void actualizarIntereses_sinCambios_retornaMismosInteresesSinGuardar() {
+        Perfil perfil = Perfil.crearVacio(usuarioId);
+        perfil.actualizarIntereses(List.of("Gimnasio"));
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.of(perfil));
+
+        List<String> resultado = perfilService.actualizarIntereses(usuarioId, List.of("Gimnasio"));
+
+        assertThat(resultado).containsExactly("Gimnasio");
+        verify(perfilRepository, never()).guardar(any());
     }
 
     @Test
@@ -110,28 +205,41 @@ class PerfilServiceTest {
     }
 
     @Test
-    void actualizarPerfil_publicaDisponibilidadCambiada_soloCuandoCambiaEseCampo() {
-        Perfil perfil = Perfil.crearVacio(usuarioId); // disponibilidad inicial: DISPONIBLE
-        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.of(perfil));
-        when(perfilRepository.guardar(any(Perfil.class))).thenAnswer(inv -> inv.getArgument(0));
+    void completarOnboarding_perfilNoExiste_lanzaPerfilNoEncontradoException() {
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.empty());
 
-        // Cambia disponibilidad junto con otro campo.
-        perfilService.actualizarPerfil(usuarioId, "Bio nueva", null, null, List.of(), Disponibilidad.OCUPADO);
-
-        verify(eventPublisher, times(1))
-                .publicarDisponibilidadCambiada(usuarioId, Disponibilidad.OCUPADO.name());
+        assertThatThrownBy(() -> perfilService.completarOnboarding(usuarioId, "Carlos", "Perez", "Sistemas",
+                null, 4, LocalDate.of(2000, 1, 1), Genero.MASCULINO, null, List.of("Gimnasio")))
+                .isInstanceOf(PerfilNoEncontradoException.class);
     }
 
     @Test
-    void actualizarPerfil_noPublicaDisponibilidadCambiada_cuandoSoloCambianOtrosCampos() {
-        Perfil perfil = Perfil.crearVacio(usuarioId); // disponibilidad inicial: DISPONIBLE
+    void completarOnboarding_conFotoValida_subeFotoYCompleta() {
+        Perfil perfil = Perfil.crearVacio(usuarioId);
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.of(perfil));
+        when(fotoPerfilStorage.subirFotoPerfil(usuarioId, "data-foto")).thenReturn("http://s3/foto.jpg");
+        when(perfilRepository.guardar(any(Perfil.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Perfil resultado = perfilService.completarOnboarding(usuarioId, "Carlos", "Perez", "Sistemas",
+                null, 4, LocalDate.of(2000, 1, 1), Genero.MASCULINO, "data-foto", List.of("Gimnasio"));
+
+        assertThat(resultado.getUrlFotoPerfil()).isEqualTo("http://s3/foto.jpg");
+        assertThat(resultado.isOnboardingCompleto()).isTrue();
+        verify(fotoPerfilStorage, times(1)).subirFotoPerfil(usuarioId, "data-foto");
+        verify(perfilRepository, times(1)).guardar(any());
+    }
+
+    @Test
+    void completarOnboarding_sinFoto_completaSinSubir() {
+        Perfil perfil = Perfil.crearVacio(usuarioId);
         when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.of(perfil));
         when(perfilRepository.guardar(any(Perfil.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        // Solo cambia la bio; la disponibilidad se mantiene igual (DISPONIBLE).
-        perfilService.actualizarPerfil(usuarioId, "Bio nueva", null, null, List.of(), Disponibilidad.DISPONIBLE);
+        Perfil resultado = perfilService.completarOnboarding(usuarioId, "Carlos", "Perez", "Sistemas",
+                null, 4, LocalDate.of(2000, 1, 1), Genero.MASCULINO, null, List.of("Gimnasio"));
 
-        verify(eventPublisher, never()).publicarDisponibilidadCambiada(any(), any());
-        verify(eventPublisher, times(1)).publicarPerfilActualizado(eq(usuarioId), eq(List.of("bio")));
+        assertThat(resultado.getUrlFotoPerfil()).isNull();
+        assertThat(resultado.isOnboardingCompleto()).isTrue();
+        verify(fotoPerfilStorage, never()).subirFotoPerfil(any(), any());
     }
 }
