@@ -39,12 +39,12 @@ jobs:
         continue-on-error: true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_BACKEND }}
+          SONAR_HOST_URL: https://sonarcloud.io
         run: |
           mvn --batch-mode sonar:sonar \
-            ...
+            -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY_BACKEND }} \
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
-            -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.token=${{ secrets.SONAR_TOKEN_BACKEND }} \
             -Dsonar.coverage.jacoco.xmlReportPaths=${GITHUB_WORKSPACE}/target/site/jacoco/jacoco.xml \
             -Dsonar.java.binaries=target/classes \
@@ -59,11 +59,12 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_BACKEND }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
         run: |
           mvn --batch-mode sonar:sonar \
+            -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY_BACKEND }} \
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
-            -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.token=${{ secrets.SONAR_TOKEN_BACKEND }} \
             -Dsonar.coverage.jacoco.xmlReportPaths=${GITHUB_WORKSPACE}/target/site/jacoco/jacoco.xml \
             -Dsonar.java.binaries=target/classes \
