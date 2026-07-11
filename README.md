@@ -1,4 +1,5 @@
-# usuarios-service — Plataforma PATRICIA
+**PATRICIA**
+# Users Microservice
 
 Microservicio responsable de la información de usuarios, perfiles, álbum de
 fotos ("monas"), roles y eventos relacionados con usuarios dentro de la
