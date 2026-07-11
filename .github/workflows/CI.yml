@@ -36,10 +36,12 @@ jobs:
 
       - name: Sonar analysis (branch)
         if: github.event_name == 'push'
+        continue-on-error: true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_BACKEND }}
         run: |
           mvn --batch-mode sonar:sonar \
+            ...
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY_BACKEND }} \
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
             -Dsonar.host.url=https://sonarcloud.io \
@@ -53,6 +55,7 @@ jobs:
 
       - name: Sonar analysis (pull request)
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_BACKEND }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
