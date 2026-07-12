@@ -5,8 +5,10 @@ import com.escuelaing.usuarios.domain.port.outbound.PerfilRepositoryPort;
 import com.escuelaing.usuarios.infrastructure.persistence.entity.PerfilEntity;
 import com.escuelaing.usuarios.infrastructure.persistence.mapper.PerfilEntityMapper;
 import com.escuelaing.usuarios.infrastructure.persistence.repository.PerfilJpaRepository;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -35,5 +37,13 @@ public class PerfilRepositoryAdapter implements PerfilRepositoryPort {
     @Override
     public Optional<Perfil> buscarPorUsuarioId(UUID usuarioId) {
         return jpaRepository.findByUsuarioId(usuarioId).map(mapper::toDomain);
+    }
+
+    @Override
+    public List<Perfil> buscarCandidatos(UUID excluirUsuarioId, int limite) {
+        return jpaRepository.buscarCandidatos(excluirUsuarioId, PageRequest.of(0, limite))
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
     }
 }
