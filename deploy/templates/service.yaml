@@ -1,0 +1,15 @@
+# Name `users` — matches Gateway's config.usersServiceUri
+# (http://users.patricia-app.svc.cluster.local:8082) and Auth's
+# USUARIO_SERVICE_URL, both already pointing here.
+apiVersion: v1
+kind: Service
+metadata:
+  name: users
+  namespace: patricia-app
+  labels: { app: users }
+spec:
+  type: ClusterIP
+  selector: { app: users }
+  ports:
+    - port: 8082
+      targetPort: 8082

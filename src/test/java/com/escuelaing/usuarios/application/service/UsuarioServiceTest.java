@@ -1,7 +1,10 @@
 package com.escuelaing.usuarios.application.service;
 
+import com.escuelaing.usuarios.domain.exception.UsuarioNoEncontradoException;
+import com.escuelaing.usuarios.domain.model.EstadoUsuario;
 import com.escuelaing.usuarios.domain.model.OrigenUsuario;
 import com.escuelaing.usuarios.domain.model.Perfil;
+import com.escuelaing.usuarios.domain.model.RolPlataforma;
 import com.escuelaing.usuarios.domain.model.Usuario;
 import com.escuelaing.usuarios.domain.port.in.UsuarioUseCase;
 import com.escuelaing.usuarios.domain.port.outbound.PerfilRepositoryPort;
@@ -15,14 +18,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class UsuarioServiceTest {
@@ -80,49 +83,94 @@ class UsuarioServiceTest {
     }
 
     @Test
-    void buscarOCrear_publicaUsuarioCreadoSoloUnaVez_alLlamarDosVeces() {
-        // Primera invocación: no existe -> se crea.
-        when(usuarioRepository.buscarPorEmail(EMAIL))
-                .thenReturn(Optional.empty());
-        when(usuarioRepository.guardar(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(perfilRepository.guardar(any(Perfil.class))).thenAnswer(inv -> inv.getArgument(0));
+    void buscarPorId_cuandoNoExiste_lanzaUsuarioNoEncontradoException() {
+        UUID id = UUID.randomUUID();
+        when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.empty());
 
-        UsuarioUseCase.ResultadoFindOrCreate primera = usuarioService.buscarOCrear(EMAIL, NOMBRE, null);
-        assertThat(primera.creado()).isTrue();
-
-        // Segunda invocación: ya existe -> NO se vuelve a publicar usuario.creado.
-        when(usuarioRepository.buscarPorEmail(EMAIL)).thenReturn(Optional.of(primera.usuario()));
-        UsuarioUseCase.ResultadoFindOrCreate segunda = usuarioService.buscarOCrear(EMAIL, NOMBRE, null);
-        assertThat(segunda.creado()).isFalse();
-
-        verify(eventPublisher, times(1))
-                .publicarUsuarioCreado(any(), eq(EMAIL), eq(NOMBRE), any());
+        assertThatThrownBy(() -> usuarioService.buscarPorId(id))
+                .isInstanceOf(UsuarioNoEncontradoException.class);
     }
 
     @Test
-    void buscarOCrear_actualizaMicrosoftIdSoloSiEstabaAusente() {
-        Usuario existenteSinMsId = Usuario.crearNuevo(EMAIL, NOMBRE, null);
-        when(usuarioRepository.buscarPorEmail(EMAIL)).thenReturn(Optional.of(existenteSinMsId));
-        when(usuarioRepository.guardar(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
+    void buscarPorId_cuandoExiste_retornaUsuario() {
+        UUID id = UUID.randomUUID();
+        Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null);
+        when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.of(usuario));
 
-        UsuarioUseCase.ResultadoFindOrCreate resultado = usuarioService.buscarOCrear(EMAIL, NOMBRE, "ms-456");
+        Usuario resultado = usuarioService.buscarPorId(id);
 
-        assertThat(resultado.creado()).isFalse();
-        assertThat(resultado.usuario().getMicrosoftId()).isEqualTo("ms-456");
-
-        ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
-        verify(usuarioRepository).guardar(captor.capture());
-        assertThat(captor.getValue().getMicrosoftId()).isEqualTo("ms-456");
+        assertThat(resultado).isEqualTo(usuario);
     }
 
     @Test
-    void buscarOCrear_origenEsOtpCuandoNoLlegaMicrosoftId() {
-        when(usuarioRepository.buscarPorEmail(EMAIL)).thenReturn(Optional.empty());
+    void buscarPorEmail_retornaUsuarioDeManeraOpcional() {
+        Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null);
+        when(usuarioRepository.buscarPorEmail(EMAIL)).thenReturn(Optional.of(usuario));
+
+        Optional<Usuario> resultado = usuarioService.buscarPorEmail(EMAIL);
+
+        assertThat(resultado).contains(usuario);
+
+        when(usuarioRepository.buscarPorEmail("invalido")).thenReturn(Optional.empty());
+        assertThat(usuarioService.buscarPorEmail("invalido")).isEmpty();
+    }
+
+    @Test
+    void cambiarEstado_cuandoUsuarioNoExiste_lanzaUsuarioNoEncontradoException() {
+        UUID id = UUID.randomUUID();
+        when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> usuarioService.cambiarEstado(id, EstadoUsuario.ACTIVE))
+                .isInstanceOf(UsuarioNoEncontradoException.class);
+    }
+
+    @Test
+    void cambiarEstado_aBanned_publicaUsuarioBaneado() {
+        UUID id = UUID.randomUUID();
+        Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null);
+        when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.of(usuario));
         when(usuarioRepository.guardar(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(perfilRepository.guardar(any(Perfil.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        usuarioService.buscarOCrear(EMAIL, NOMBRE, null);
+        Usuario resultado = usuarioService.cambiarEstado(id, EstadoUsuario.BANNED);
 
-        verify(eventPublisher).publicarUsuarioCreado(any(), eq(EMAIL), eq(NOMBRE), eq(OrigenUsuario.OTP));
+        assertThat(resultado.getEstado()).isEqualTo(EstadoUsuario.BANNED);
+        verify(eventPublisher, times(1)).publicarUsuarioBaneado(usuario.getId());
+        verify(eventPublisher, never()).publicarUsuarioActualizado(any(), any());
+    }
+
+    @Test
+    void cambiarEstado_aSuspended_publicaUsuarioActualizado() {
+        UUID id = UUID.randomUUID();
+        Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null);
+        when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.guardar(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Usuario resultado = usuarioService.cambiarEstado(id, EstadoUsuario.SUSPENDED);
+
+        assertThat(resultado.getEstado()).isEqualTo(EstadoUsuario.SUSPENDED);
+        verify(eventPublisher, times(1)).publicarUsuarioActualizado(usuario.getId(), java.util.List.of("estado"));
+        verify(eventPublisher, never()).publicarUsuarioBaneado(any());
+    }
+
+    @Test
+    void actualizarRoles_cuandoUsuarioNoExiste_lanzaUsuarioNoEncontradoException() {
+        UUID id = UUID.randomUUID();
+        when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> usuarioService.actualizarRoles(id, Set.of(RolPlataforma.ADMIN)))
+                .isInstanceOf(UsuarioNoEncontradoException.class);
+    }
+
+    @Test
+    void actualizarRoles_conUsuarioExistente_guardaYPublicaActualizado() {
+        UUID id = UUID.randomUUID();
+        Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null);
+        when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.guardar(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Usuario resultado = usuarioService.actualizarRoles(id, Set.of(RolPlataforma.ADMIN));
+
+        assertThat(resultado.getRoles()).containsExactly(RolPlataforma.ADMIN);
+        verify(eventPublisher, times(1)).publicarUsuarioActualizado(usuario.getId(), java.util.List.of("roles"));
     }
 }

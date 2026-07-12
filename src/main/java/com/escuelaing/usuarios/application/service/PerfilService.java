@@ -54,6 +54,12 @@ public class PerfilService implements PerfilUseCase {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Perfil> buscarCandidatos(UUID excluirUsuarioId, int limite) {
+        return perfilRepository.buscarCandidatos(excluirUsuarioId, limite);
+    }
+
+    @Override
     @CacheEvict(value = "perfiles", key = "#usuarioId")
     public Perfil actualizarPerfil(UUID usuarioId, String bio, String carrera, Integer semestre,
                                    List<String> intereses, Disponibilidad disponibilidad) {

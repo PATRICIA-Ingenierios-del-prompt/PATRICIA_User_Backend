@@ -1,0 +1,14 @@
+# Non-secret configuration. JWT_SECRET, RabbitMQ, Postgres, and Redis
+# credentials come from the users-secrets Secret synced by the ExternalSecret
+# (see externalsecret.yaml).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: users-config
+  namespace: patricia-app
+data:
+  AUTH_SERVICE_URL: {{ .Values.config.authServiceUrl | quote }}
+  MAX_REPORTES_SUSPENSION: {{ .Values.config.maxReportesSuspension | quote }}
+  AWS_S3_BUCKET: {{ .Values.config.awsS3Bucket | quote }}
+  AWS_S3_REGION: {{ .Values.config.awsS3Region | quote }}
+  AWS_S3_PUBLIC_URL_BASE: {{ .Values.config.awsS3PublicUrlBase | quote }}

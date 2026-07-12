@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: users
+  namespace: patricia-app
+  labels: { app: users, patricia.io/sg-tier: standard }
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels: { app: users }
+  template:
+    metadata:
+      labels: { app: users, patricia.io/sg-tier: standard }
+    spec:
+      serviceAccountName: users
+      containers:
+        - name: users
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8082
+          envFrom:
+            - configMapRef: { name: users-config }
+            - secretRef:    { name: users-secrets }
+          # Lessons learned deploying Auth, applied from day one here:
+          # - startupProbe gives the JVM room to boot before liveness/readiness
+          #   even start checking (cold Fargate + Spring Security + JPA +
+          #   Redis + Rabbit init took ~40s for Auth).
+          # - timeoutSeconds:3 (not Kubernetes' 1s default) — a 1s timeout was
+          #   what actually caused Auth's early "context deadline exceeded"
+          #   restarts, not a real hang; the app was alive but briefly slower
+          #   to answer than 1s under low CPU.
+          # - livenessProbe hits /actuator/health/liveness (JVM-only signal),
+          #   never the aggregate /actuator/health — otherwise a transient
+          #   Redis/Rabbit blip kills a perfectly healthy pod. readinessProbe
+          #   is the one that should reflect real dependency health, since it
+          #   only gates traffic, it doesn't kill the pod.
+          # - SecurityConfig here already permits /actuator/health/** with a
+          #   wildcard (unlike Auth's original exact-match-only bug), so the
+          #   liveness subpath is already reachable without any code change.
+          startupProbe:
+            httpGet: { path: /actuator/health, port: 8082 }
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: 8082 }
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8082 }
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

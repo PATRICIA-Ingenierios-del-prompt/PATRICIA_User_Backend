@@ -82,7 +82,7 @@ class ReporteConsumerTest {
         reporteService.registrarReporte(usuarioId);
 
         verify(eventPublisher, times(1))
-                .publicarUsuarioSuspendido(usuarioId, MotivoSuspension.REPORTES, MAX_REPORTES);
+        .publicarUsuarioSuspendido(usuario.getId(), MotivoSuspension.REPORTES, MAX_REPORTES);
     }
 
     @Test
@@ -93,7 +93,7 @@ class ReporteConsumerTest {
 
         reporteService.registrarReporte(usuarioId);
 
-        verify(authServicePort, times(1)).cerrarSesion(usuarioId);
+        verify(authServicePort, times(1)).cerrarSesion(usuario.getId());
     }
 
     @Test

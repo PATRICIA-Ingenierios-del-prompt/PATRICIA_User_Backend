@@ -1,0 +1,59 @@
+# Defaults for the Users MS chart. The CD job overrides image.repository and
+# image.tag per deploy (pinned to the commit SHA); everything else is edited
+# here and versioned with the code it configures.
+
+image:
+  repository: ""            # set by CD: <account>.dkr.ecr.<region>.amazonaws.com/patricia-dev/users
+  tag: ""                   # set by CD: short commit SHA
+  pullPolicy: IfNotPresent
+
+replicaCount: 2
+
+serviceAccount:
+  roleArn: "arn:aws:iam::406103775000:role/patricia-dev-users-irsa"
+
+config:
+ 
+  authServiceUrl: "http://auth.patricia-app.svc.cluster.local:8081"
+  maxReportesSuspension: "5"
+  # Profile-photo upload (onboarding). Deliberately empty for now — the app
+  # itself treats an empty bucket as "not configured yet" and fails just that
+  # one upload feature with a clear error, instead of failing to boot. Fill
+  # in once S3 + IRSA are actually wired up for this service.
+  awsS3Bucket: "patricia-dev-uploads-406103775000"
+  awsS3PublicUrlBase: "https://d26pt6qlbaevlh.cloudfront.net"
+  awsS3Region: "us-east-1"
+  
+
+externalSecrets:
+  clusterSecretStore: patricia-aws-secrets-manager
+  prefix: "patricia-dev"
+  # What's already provisioned in AWS Secrets Manager (confirmed via
+  # `aws secretsmanager list-secrets`) — all of it, nothing missing this time:
+  #   patricia-dev/jwt-secret     -> EXISTS. Shared with Gateway/Auth (Auth
+  #                                  signs, Gateway validates, Users also
+  #                                  validates via JwtTokenParser — same
+  #                                  entry, not a copy).
+  #   patricia-dev/amazon-mq      -> EXISTS. JSON keys SPRING_RABBITMQ_ADDRESSES/
+  #                                  USERNAME/PASSWORD (see externalsecret.yaml).
+  #   patricia-dev/cache-redis    -> EXISTS. JSON keys REDIS_HOST/REDIS_PORT/
+  #                                  REDIS_PASSWORD.
+  #   patricia-dev/users/rds      -> EXISTS. JSON keys SPRING_DATASOURCE_URL/
+  #                                  USERNAME/PASSWORD — Spring's own binding
+  #                                  names, and (unlike Auth's original
+  #                                  RabbitMQ mismatch) application.yml was
+  #                                  updated to match these exactly, so no
+  #                                  renaming needed here, just a straight
+  #                                  passthrough.
+  #   patricia-dev/internal-api-key -> EXISTS (created for Auth). Reused as-is:
+  #                                  this is the shared service-to-service key,
+  #                                  not per-service.
+
+resources:
+  requests: { cpu: 500m, memory: 768Mi }
+  limits:   { cpu: "1",  memory: 1Gi }
+
+hpa:
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
