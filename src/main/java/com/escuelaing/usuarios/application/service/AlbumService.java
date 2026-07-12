@@ -2,6 +2,7 @@ package com.escuelaing.usuarios.application.service;
 
 import com.escuelaing.usuarios.domain.exception.DominioInvalidoException;
 import com.escuelaing.usuarios.domain.exception.FotoNoEncontradaException;
+import com.escuelaing.usuarios.domain.exception.MaxFotosException;
 import com.escuelaing.usuarios.domain.model.AlbumFotos;
 import com.escuelaing.usuarios.domain.model.Foto;
 import com.escuelaing.usuarios.domain.port.in.AlbumUseCase;
@@ -69,8 +70,15 @@ public class AlbumService implements AlbumUseCase {
                     "Formato no soportado: " + contentType + ". Use image/jpeg, image/png o image/webp.");
         }
 
+        // Validar límite ANTES de subir a S3 para no desperdiciar la llamada
+        List<Foto> existentes = fotoRepository.buscarPorUsuarioId(usuarioId);
+        AlbumFotos album = AlbumFotos.de(usuarioId, existentes);
+        if (album.size() >= AlbumFotos.MAX_FOTOS) {
+            throw new MaxFotosException(AlbumFotos.MAX_FOTOS);
+        }
+
         String urlFoto = fotoStorage.subirFotoAlbum(usuarioId, contenido, MIME_PERMITIDOS.get(mimeNorm));
-        return persistirNuevaFoto(usuarioId, urlFoto);
+        return persistirNuevaFoto(album, urlFoto);
     }
 
     @Override
@@ -93,18 +101,22 @@ public class AlbumService implements AlbumUseCase {
             throw new DominioInvalidoException("El contenido base64 de la foto no es válido");
         }
 
-        String urlFoto = fotoStorage.subirFotoAlbum(usuarioId, bytes, MIME_PERMITIDOS.get(mime));
-        return persistirNuevaFoto(usuarioId, urlFoto);
-    }
-
-    private Foto persistirNuevaFoto(UUID usuarioId, String urlFoto) {
+        // Validar límite ANTES de subir a S3
         List<Foto> existentes = fotoRepository.buscarPorUsuarioId(usuarioId);
         AlbumFotos album = AlbumFotos.de(usuarioId, existentes);
+        if (album.size() >= AlbumFotos.MAX_FOTOS) {
+            throw new MaxFotosException(AlbumFotos.MAX_FOTOS);
+        }
 
+        String urlFoto = fotoStorage.subirFotoAlbum(usuarioId, bytes, MIME_PERMITIDOS.get(mime));
+        return persistirNuevaFoto(album, urlFoto);
+    }
+
+    private Foto persistirNuevaFoto(AlbumFotos album, String urlFoto) {
         Foto nueva = album.agregarFoto(urlFoto);
         Foto guardada = fotoRepository.guardar(nueva);
 
-        eventPublisher.publicarFotoAgregada(usuarioId, guardada.getId(), guardada.getOrden());
+        eventPublisher.publicarFotoAgregada(album.getUsuarioId(), guardada.getId(), guardada.getOrden());
 
         return guardada;
     }

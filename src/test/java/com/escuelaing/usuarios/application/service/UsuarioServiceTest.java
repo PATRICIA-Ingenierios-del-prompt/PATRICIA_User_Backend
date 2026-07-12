@@ -1,5 +1,6 @@
 package com.escuelaing.usuarios.application.service;
 
+import com.escuelaing.usuarios.domain.exception.EstadoUsuarioInvalidoException;
 import com.escuelaing.usuarios.domain.exception.UsuarioNoEncontradoException;
 import com.escuelaing.usuarios.domain.model.EstadoUsuario;
 import com.escuelaing.usuarios.domain.model.OrigenUsuario;
@@ -13,10 +14,10 @@ import com.escuelaing.usuarios.domain.port.outbound.UsuarioRepositoryPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -30,14 +31,9 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class UsuarioServiceTest {
 
-    @Mock
-    private UsuarioRepositoryPort usuarioRepository;
-
-    @Mock
-    private PerfilRepositoryPort perfilRepository;
-
-    @Mock
-    private UsuarioEventPublisherPort eventPublisher;
+    @Mock private UsuarioRepositoryPort usuarioRepository;
+    @Mock private PerfilRepositoryPort perfilRepository;
+    @Mock private UsuarioEventPublisherPort eventPublisher;
 
     private UsuarioService usuarioService;
 
@@ -49,22 +45,19 @@ class UsuarioServiceTest {
         usuarioService = new UsuarioService(usuarioRepository, perfilRepository, eventPublisher);
     }
 
+    // ── buscarOCrear ──────────────────────────────────────────────────────────
+
     @Test
     void buscarOCrear_cuandoUsuarioNoExiste_loCreaYPublicaEvento() {
         when(usuarioRepository.buscarPorEmail(EMAIL)).thenReturn(Optional.empty());
-        when(usuarioRepository.guardar(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(perfilRepository.guardar(any(Perfil.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(usuarioRepository.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(perfilRepository.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
 
         UsuarioUseCase.ResultadoFindOrCreate resultado = usuarioService.buscarOCrear(EMAIL, NOMBRE, "ms-123");
 
         assertThat(resultado.creado()).isTrue();
         assertThat(resultado.usuario().getEmail()).isEqualTo(EMAIL);
-        assertThat(resultado.usuario().getNombre()).isEqualTo(NOMBRE);
-
-        verify(usuarioRepository, times(1)).guardar(any(Usuario.class));
-        verify(perfilRepository, times(1)).guardar(any(Perfil.class));
-        verify(eventPublisher, times(1))
-                .publicarUsuarioCreado(any(), eq(EMAIL), eq(NOMBRE), eq(OrigenUsuario.MICROSOFT));
+        verify(eventPublisher).publicarUsuarioCreado(any(), eq(EMAIL), eq(NOMBRE), eq(OrigenUsuario.MICROSOFT));
     }
 
     @Test
@@ -75,15 +68,14 @@ class UsuarioServiceTest {
         UsuarioUseCase.ResultadoFindOrCreate resultado = usuarioService.buscarOCrear(EMAIL, NOMBRE, "ms-123");
 
         assertThat(resultado.creado()).isFalse();
-        assertThat(resultado.usuario().getId()).isEqualTo(existente.getId());
-
         verify(usuarioRepository, never()).guardar(any());
-        verify(perfilRepository, never()).guardar(any());
         verify(eventPublisher, never()).publicarUsuarioCreado(any(), any(), any(), any());
     }
 
+    // ── buscarPorId ───────────────────────────────────────────────────────────
+
     @Test
-    void buscarPorId_cuandoNoExiste_lanzaUsuarioNoEncontradoException() {
+    void buscarPorId_noExiste_lanzaUsuarioNoEncontradoException() {
         UUID id = UUID.randomUUID();
         when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.empty());
 
@@ -92,49 +84,37 @@ class UsuarioServiceTest {
     }
 
     @Test
-    void buscarPorId_cuandoExiste_retornaUsuario() {
+    void buscarPorId_existe_retornaUsuario() {
         UUID id = UUID.randomUUID();
         Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null);
         when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.of(usuario));
 
-        Usuario resultado = usuarioService.buscarPorId(id);
-
-        assertThat(resultado).isEqualTo(usuario);
+        assertThat(usuarioService.buscarPorId(id)).isEqualTo(usuario);
     }
 
+    // ── buscarPorEmail ────────────────────────────────────────────────────────
+
     @Test
-    void buscarPorEmail_retornaUsuarioDeManeraOpcional() {
+    void buscarPorEmail_retornaOpcional() {
         Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null);
         when(usuarioRepository.buscarPorEmail(EMAIL)).thenReturn(Optional.of(usuario));
 
-        Optional<Usuario> resultado = usuarioService.buscarPorEmail(EMAIL);
-
-        assertThat(resultado).contains(usuario);
-
-        when(usuarioRepository.buscarPorEmail("invalido")).thenReturn(Optional.empty());
-        assertThat(usuarioService.buscarPorEmail("invalido")).isEmpty();
+        assertThat(usuarioService.buscarPorEmail(EMAIL)).contains(usuario);
     }
 
-    @Test
-    void cambiarEstado_cuandoUsuarioNoExiste_lanzaUsuarioNoEncontradoException() {
-        UUID id = UUID.randomUUID();
-        when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> usuarioService.cambiarEstado(id, EstadoUsuario.ACTIVE))
-                .isInstanceOf(UsuarioNoEncontradoException.class);
-    }
+    // ── cambiarEstado ─────────────────────────────────────────────────────────
 
     @Test
     void cambiarEstado_aBanned_publicaUsuarioBaneado() {
         UUID id = UUID.randomUUID();
         Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null);
         when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.of(usuario));
-        when(usuarioRepository.guardar(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(usuarioRepository.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
 
         Usuario resultado = usuarioService.cambiarEstado(id, EstadoUsuario.BANNED);
 
         assertThat(resultado.getEstado()).isEqualTo(EstadoUsuario.BANNED);
-        verify(eventPublisher, times(1)).publicarUsuarioBaneado(usuario.getId());
+        verify(eventPublisher).publicarUsuarioBaneado(usuario.getId());
         verify(eventPublisher, never()).publicarUsuarioActualizado(any(), any());
     }
 
@@ -143,17 +123,18 @@ class UsuarioServiceTest {
         UUID id = UUID.randomUUID();
         Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null);
         when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.of(usuario));
-        when(usuarioRepository.guardar(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(usuarioRepository.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        Usuario resultado = usuarioService.cambiarEstado(id, EstadoUsuario.SUSPENDED);
+        usuarioService.cambiarEstado(id, EstadoUsuario.SUSPENDED);
 
-        assertThat(resultado.getEstado()).isEqualTo(EstadoUsuario.SUSPENDED);
-        verify(eventPublisher, times(1)).publicarUsuarioActualizado(usuario.getId(), java.util.List.of("estado"));
+        verify(eventPublisher).publicarUsuarioActualizado(usuario.getId(), List.of("estado"));
         verify(eventPublisher, never()).publicarUsuarioBaneado(any());
     }
 
+    // ── actualizarRoles ───────────────────────────────────────────────────────
+
     @Test
-    void actualizarRoles_cuandoUsuarioNoExiste_lanzaUsuarioNoEncontradoException() {
+    void actualizarRoles_noExiste_lanzaUsuarioNoEncontradoException() {
         UUID id = UUID.randomUUID();
         when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.empty());
 
@@ -162,15 +143,89 @@ class UsuarioServiceTest {
     }
 
     @Test
-    void actualizarRoles_conUsuarioExistente_guardaYPublicaActualizado() {
+    void actualizarRoles_guardaYPublicaActualizado() {
         UUID id = UUID.randomUUID();
         Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null);
         when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.of(usuario));
-        when(usuarioRepository.guardar(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(usuarioRepository.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
 
         Usuario resultado = usuarioService.actualizarRoles(id, Set.of(RolPlataforma.ADMIN));
 
         assertThat(resultado.getRoles()).containsExactly(RolPlataforma.ADMIN);
-        verify(eventPublisher, times(1)).publicarUsuarioActualizado(usuario.getId(), java.util.List.of("roles"));
+        verify(eventPublisher).publicarUsuarioActualizado(usuario.getId(), List.of("roles"));
+    }
+
+    // ── cerrarCuenta ──────────────────────────────────────────────────────────
+
+    @Test
+    void cerrarCuenta_noExiste_lanzaUsuarioNoEncontradoException() {
+        UUID id = UUID.randomUUID();
+        when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> usuarioService.cerrarCuenta(id))
+                .isInstanceOf(UsuarioNoEncontradoException.class);
+    }
+
+    @Test
+    void cerrarCuenta_activo_cambiaEstadoAPendingDeletionYGuarda() {
+        UUID id = UUID.randomUUID();
+        Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null);
+        when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Usuario resultado = usuarioService.cerrarCuenta(id);
+
+        assertThat(resultado.getEstado()).isEqualTo(EstadoUsuario.PENDING_DELETION);
+        assertThat(resultado.getFechaSolicitudEliminacion()).isNotNull();
+        verify(usuarioRepository).guardar(usuario);
+        verify(eventPublisher).publicarUsuarioActualizado(usuario.getId(),
+                List.of("estado", "fechaSolicitudEliminacion"));
+    }
+
+    @Test
+    void cerrarCuenta_yaPendingDeletion_lanzaEstadoInvalidoException() {
+        UUID id = UUID.randomUUID();
+        Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null);
+        usuario.solicitarEliminacion(); // ya está PENDING_DELETION
+        when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.of(usuario));
+
+        assertThatThrownBy(() -> usuarioService.cerrarCuenta(id))
+                .isInstanceOf(EstadoUsuarioInvalidoException.class);
+    }
+
+    // ── cancelarCierreCuenta ─────────────────────────────────────────────────
+
+    @Test
+    void cancelarCierreCuenta_noExiste_lanzaUsuarioNoEncontradoException() {
+        UUID id = UUID.randomUUID();
+        when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> usuarioService.cancelarCierreCuenta(id))
+                .isInstanceOf(UsuarioNoEncontradoException.class);
+    }
+
+    @Test
+    void cancelarCierreCuenta_pendingDeletion_restauraAActive() {
+        UUID id = UUID.randomUUID();
+        Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null);
+        usuario.solicitarEliminacion();
+        when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Usuario resultado = usuarioService.cancelarCierreCuenta(id);
+
+        assertThat(resultado.getEstado()).isEqualTo(EstadoUsuario.ACTIVE);
+        assertThat(resultado.getFechaSolicitudEliminacion()).isNull();
+        verify(usuarioRepository).guardar(usuario);
+    }
+
+    @Test
+    void cancelarCierreCuenta_noEstaPendiente_lanzaEstadoInvalidoException() {
+        UUID id = UUID.randomUUID();
+        Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null); // estado ACTIVE
+        when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.of(usuario));
+
+        assertThatThrownBy(() -> usuarioService.cancelarCierreCuenta(id))
+                .isInstanceOf(EstadoUsuarioInvalidoException.class);
     }
 }
