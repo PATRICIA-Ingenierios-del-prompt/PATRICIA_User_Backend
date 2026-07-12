@@ -34,6 +34,8 @@ public class Usuario {
     private Instant fechaActualizacion;
     private Instant ultimoAcceso;
     private int contadorReportes;
+    /** Instante en el que se solicitó el cierre permanente. Nulo si no aplica. */
+    private Instant fechaSolicitudEliminacion;
 
     protected Usuario() {
         // Para reconstrucción desde infraestructura (mappers).
@@ -42,7 +44,8 @@ public class Usuario {
     private Usuario(UUID id, String email, String nombre, String microsoftId,
                      EstadoUsuario estado, Set<RolPlataforma> roles,
                      Instant fechaCreacion, Instant fechaActualizacion,
-                     Instant ultimoAcceso, int contadorReportes) {
+                     Instant ultimoAcceso, int contadorReportes,
+                     Instant fechaSolicitudEliminacion) {
         this.id = id;
         this.email = email;
         this.nombre = nombre;
@@ -53,6 +56,7 @@ public class Usuario {
         this.fechaActualizacion = fechaActualizacion;
         this.ultimoAcceso = ultimoAcceso;
         this.contadorReportes = contadorReportes;
+        this.fechaSolicitudEliminacion = fechaSolicitudEliminacion;
     }
 
     /**
@@ -74,7 +78,8 @@ public class Usuario {
                 ahora,
                 ahora,
                 null,
-                0
+                0,
+                null
         );
     }
 
@@ -88,7 +93,18 @@ public class Usuario {
                                        Instant ultimoAcceso, int contadorReportes) {
         return new Usuario(id, email, nombre, microsoftId, estado,
                 roles == null ? new HashSet<>() : new HashSet<>(roles),
-                fechaCreacion, fechaActualizacion, ultimoAcceso, contadorReportes);
+                fechaCreacion, fechaActualizacion, ultimoAcceso, contadorReportes, null);
+    }
+
+    public static Usuario reconstruir(UUID id, String email, String nombre, String microsoftId,
+                                       EstadoUsuario estado, Set<RolPlataforma> roles,
+                                       Instant fechaCreacion, Instant fechaActualizacion,
+                                       Instant ultimoAcceso, int contadorReportes,
+                                       Instant fechaSolicitudEliminacion) {
+        return new Usuario(id, email, nombre, microsoftId, estado,
+                roles == null ? new HashSet<>() : new HashSet<>(roles),
+                fechaCreacion, fechaActualizacion, ultimoAcceso, contadorReportes,
+                fechaSolicitudEliminacion);
     }
 
     private static void validarEmail(String email) {
@@ -167,6 +183,46 @@ public class Usuario {
                 && this.ultimoAcceso == null && this.contadorReportes == 0;
     }
 
+    /**
+     * Marca la cuenta para eliminación permanente. El borrado efectivo
+     * ocurrirá 24 h después mediante el scheduler.
+     *
+     * @throws EstadoUsuarioInvalidoException si la cuenta ya está en PENDING_DELETION.
+     */
+    public void solicitarEliminacion() {
+        if (this.estado == EstadoUsuario.PENDING_DELETION) {
+            throw new EstadoUsuarioInvalidoException("La cuenta ya está marcada para eliminación");
+        }
+        this.estado = EstadoUsuario.PENDING_DELETION;
+        this.fechaSolicitudEliminacion = Instant.now();
+        this.fechaActualizacion = Instant.now();
+    }
+
+    /**
+     * Cancela una solicitud de eliminación pendiente, restaurando el estado ACTIVE.
+     *
+     * @throws EstadoUsuarioInvalidoException si la cuenta no está en PENDING_DELETION.
+     */
+    public void cancelarEliminacion() {
+        if (this.estado != EstadoUsuario.PENDING_DELETION) {
+            throw new EstadoUsuarioInvalidoException("La cuenta no está marcada para eliminación");
+        }
+        this.estado = EstadoUsuario.ACTIVE;
+        this.fechaSolicitudEliminacion = null;
+        this.fechaActualizacion = Instant.now();
+    }
+
+    /**
+     * Indica si han transcurrido al menos {@code horasGracia} horas desde la
+     * solicitud de eliminación.
+     */
+    public boolean graciaEliminacionExpirada(long horasGracia) {
+        if (this.estado != EstadoUsuario.PENDING_DELETION || this.fechaSolicitudEliminacion == null) {
+            return false;
+        }
+        return Instant.now().isAfter(this.fechaSolicitudEliminacion.plusSeconds(horasGracia * 3600));
+    }
+
     // --- Getters ---
 
     public UUID getId() {
@@ -207,6 +263,10 @@ public class Usuario {
 
     public int getContadorReportes() {
         return contadorReportes;
+    }
+
+    public Instant getFechaSolicitudEliminacion() {
+        return fechaSolicitudEliminacion;
     }
 
     @Override

@@ -9,6 +9,7 @@ import com.escuelaing.usuarios.infrastructure.messaging.event.CamposModificadosP
 import com.escuelaing.usuarios.infrastructure.messaging.event.DisponibilidadCambiadaPayload;
 import com.escuelaing.usuarios.infrastructure.messaging.event.EventoEnvelope;
 import com.escuelaing.usuarios.infrastructure.messaging.event.InteresesActualizadosPayload;
+import com.escuelaing.usuarios.infrastructure.messaging.event.PersonaDetectadaPayload;
 import com.escuelaing.usuarios.infrastructure.messaging.event.UsuarioCreadoPayload;
 import com.escuelaing.usuarios.infrastructure.messaging.event.UsuarioSuspendidoPayload;
 import org.slf4j.Logger;
@@ -88,6 +89,17 @@ public class UsuarioEventPublisherAdapter implements UsuarioEventPublisherPort {
     public void publicarFotoEliminada(UUID usuarioId, UUID fotoId) {
         var payload = AlbumFotoPayload.eliminada(fotoId);
         publicar(RabbitMqConfig.RK_ALBUM_FOTO_ELIMINADA, usuarioId, payload);
+    }
+
+    @Override
+    public void publicarPersonaDetectadaEnFoto(UUID usuarioId, UUID fotoId) {
+        var payload = new PersonaDetectadaPayload(fotoId);
+        publicar(RabbitMqConfig.RK_ALBUM_FOTO_PERSONA_DETECTADA, usuarioId, payload);
+    }
+
+    @Override
+    public void publicarUsuarioEliminado(UUID usuarioId) {
+        publicar(RabbitMqConfig.RK_USUARIO_ELIMINADO, usuarioId, null);
     }
 
     private <T> void publicar(String routingKey, UUID usuarioId, T payload) {

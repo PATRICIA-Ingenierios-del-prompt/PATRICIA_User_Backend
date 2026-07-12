@@ -8,6 +8,7 @@ import com.escuelaing.usuarios.infrastructure.persistence.repository.FotoJpaRepo
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -31,6 +32,11 @@ public class FotoRepositoryAdapter implements FotoRepositoryPort {
         return jpaRepository.findByUsuarioIdOrderByOrdenAsc(usuarioId).stream()
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Optional<Foto> buscarPorId(UUID fotoId) {
+        return jpaRepository.findById(fotoId).map(mapper::toDomain);
     }
 
     @Override

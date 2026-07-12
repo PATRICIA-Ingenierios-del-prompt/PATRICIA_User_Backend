@@ -29,4 +29,17 @@ public interface UsuarioEventPublisherPort {
     void publicarFotoAgregada(UUID usuarioId, UUID fotoId, int orden);
 
     void publicarFotoEliminada(UUID usuarioId, UUID fotoId);
+
+    /**
+     * Evento publicado cuando se detecta una persona en una foto del álbum.
+     * Routing key: album.foto.persona.detectada
+     */
+    void publicarPersonaDetectadaEnFoto(UUID usuarioId, UUID fotoId);
+
+    /**
+     * Evento publicado cuando se elimina permanentemente la cuenta de un usuario
+     * tras expirar el período de gracia de 24 h.
+     * Routing key: usuario.eliminado
+     */
+    void publicarUsuarioEliminado(UUID usuarioId);
 }

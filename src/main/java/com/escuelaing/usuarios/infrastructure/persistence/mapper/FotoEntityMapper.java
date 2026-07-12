@@ -20,7 +20,8 @@ public abstract class FotoEntityMapper {
                 entity.getUsuarioId(),
                 entity.getUrlFoto(),
                 entity.getOrden(),
-                entity.getFechaSubida()
+                entity.getFechaSubida(),
+                entity.isTienePersonaEnFoto()
         );
     }
 
@@ -34,6 +35,7 @@ public abstract class FotoEntityMapper {
                 .urlFoto(foto.getUrlFoto())
                 .orden(foto.getOrden())
                 .fechaSubida(foto.getFechaSubida())
+                .tienePersonaEnFoto(foto.isTienePersonaEnFoto())
                 .build();
     }
 }

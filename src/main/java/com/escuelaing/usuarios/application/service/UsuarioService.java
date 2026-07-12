@@ -112,4 +112,32 @@ public class UsuarioService implements UsuarioUseCase {
 
         return actualizado;
     }
+
+    @Override
+    public Usuario cerrarCuenta(UUID id) {
+        Usuario usuario = usuarioRepository.buscarPorId(id)
+                .orElseThrow(() -> new UsuarioNoEncontradoException(id));
+
+        usuario.solicitarEliminacion();
+        Usuario actualizado = usuarioRepository.guardar(usuario);
+
+        eventPublisher.publicarUsuarioActualizado(actualizado.getId(),
+                java.util.List.of("estado", "fechaSolicitudEliminacion"));
+
+        return actualizado;
+    }
+
+    @Override
+    public Usuario cancelarCierreCuenta(UUID id) {
+        Usuario usuario = usuarioRepository.buscarPorId(id)
+                .orElseThrow(() -> new UsuarioNoEncontradoException(id));
+
+        usuario.cancelarEliminacion();
+        Usuario actualizado = usuarioRepository.guardar(usuario);
+
+        eventPublisher.publicarUsuarioActualizado(actualizado.getId(),
+                java.util.List.of("estado", "fechaSolicitudEliminacion"));
+
+        return actualizado;
+    }
 }
