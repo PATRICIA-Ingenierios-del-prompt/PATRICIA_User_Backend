@@ -31,5 +31,17 @@ public interface UsuarioUseCase {
 
     Usuario actualizarRoles(UUID id, Set<RolPlataforma> roles);
 
+    /**
+     * Marca la cuenta para eliminación permanente (gracia de 24 h).
+     * Cambia el estado a PENDING_DELETION y registra la fecha de solicitud.
+     */
+    Usuario cerrarCuenta(UUID id);
+
+    /**
+     * Cancela una solicitud de eliminación pendiente antes de que expire
+     * el período de gracia, restaurando el estado a ACTIVE.
+     */
+    Usuario cancelarCierreCuenta(UUID id);
+
     record ResultadoFindOrCreate(Usuario usuario, boolean creado) {}
 }

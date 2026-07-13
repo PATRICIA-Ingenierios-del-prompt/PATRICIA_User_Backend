@@ -95,7 +95,7 @@ class InternalUsuarioControllerTest {
         Usuario usuario = Usuario.crearNuevo("test@mail.escuelaing.edu.co", "Test", null);
         when(usuarioUseCase.buscarPorId(any())).thenReturn(usuario);
         when(usuarioRestMapper.toResponse(any())).thenReturn(
-                new UsuarioResponse(id, "test@mail.escuelaing.edu.co", "Test", Set.of(RolPlataforma.STUDENT), EstadoUsuario.ACTIVE));
+                new UsuarioResponse(id, "test@mail.escuelaing.edu.co", "Test", Set.of(RolPlataforma.STUDENT), EstadoUsuario.ACTIVE, null));
 
         mockMvc.perform(get("/internal/usuarios/{id}", id)
                         .header(InternalApiKeyFilter.HEADER, VALID_KEY))
@@ -122,7 +122,7 @@ class InternalUsuarioControllerTest {
 
         when(usuarioUseCase.buscarOCrear(eq("test@mail.escuelaing.edu.co"), eq("Test"), eq("ms-123"))).thenReturn(resultado);
         when(usuarioRestMapper.toResponse(usuario)).thenReturn(
-                new UsuarioResponse(id, "test@mail.escuelaing.edu.co", "Test", Set.of(RolPlataforma.STUDENT), EstadoUsuario.ACTIVE));
+                new UsuarioResponse(id, "test@mail.escuelaing.edu.co", "Test", Set.of(RolPlataforma.STUDENT), EstadoUsuario.ACTIVE, null));
 
         mockMvc.perform(post("/internal/usuarios/find-or-create")
                         .header(InternalApiKeyFilter.HEADER, VALID_KEY)
@@ -141,7 +141,7 @@ class InternalUsuarioControllerTest {
 
         when(usuarioUseCase.buscarOCrear(eq("test@mail.escuelaing.edu.co"), eq("Test"), eq("ms-123"))).thenReturn(resultado);
         when(usuarioRestMapper.toResponse(usuario)).thenReturn(
-                new UsuarioResponse(id, "test@mail.escuelaing.edu.co", "Test", Set.of(RolPlataforma.STUDENT), EstadoUsuario.ACTIVE));
+                new UsuarioResponse(id, "test@mail.escuelaing.edu.co", "Test", Set.of(RolPlataforma.STUDENT), EstadoUsuario.ACTIVE, null));
 
         mockMvc.perform(post("/internal/usuarios/find-or-create")
                         .header(InternalApiKeyFilter.HEADER, VALID_KEY)
@@ -163,7 +163,7 @@ class InternalUsuarioControllerTest {
         Usuario usuario = Usuario.crearNuevo("test@mail.escuelaing.edu.co", "Test", null);
         when(usuarioUseCase.buscarPorEmail("test@mail.escuelaing.edu.co")).thenReturn(Optional.of(usuario));
         when(usuarioRestMapper.toResponse(usuario)).thenReturn(
-                new UsuarioResponse(id, "test@mail.escuelaing.edu.co", "Test", Set.of(RolPlataforma.STUDENT), EstadoUsuario.ACTIVE));
+                new UsuarioResponse(id, "test@mail.escuelaing.edu.co", "Test", Set.of(RolPlataforma.STUDENT), EstadoUsuario.ACTIVE, null));
 
         mockMvc.perform(get("/internal/usuarios/buscar")
                         .header(InternalApiKeyFilter.HEADER, VALID_KEY)
@@ -198,7 +198,7 @@ class InternalUsuarioControllerTest {
         Usuario usuario = Usuario.crearNuevo("test@mail.escuelaing.edu.co", "Test", null);
 
         UsuarioResponse response = new UsuarioResponse(
-                id, "test@mail.escuelaing.edu.co", "Test", Set.of(RolPlataforma.STUDENT), EstadoUsuario.SUSPENDED
+                id, "test@mail.escuelaing.edu.co", "Test", Set.of(RolPlataforma.STUDENT), EstadoUsuario.SUSPENDED, null
         );
 
         when(usuarioUseCase.cambiarEstado(eq(id), eq(EstadoUsuario.SUSPENDED))).thenReturn(usuario);

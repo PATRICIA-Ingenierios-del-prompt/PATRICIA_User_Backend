@@ -37,6 +37,8 @@ public class RabbitMqConfig {
     public static final String RK_DISPONIBILIDAD_CAMBIADA = "disponibilidad.cambiada";
     public static final String RK_ALBUM_FOTO_AGREGADA = "album.foto.agregada";
     public static final String RK_ALBUM_FOTO_ELIMINADA = "album.foto.eliminada";
+    public static final String RK_ALBUM_FOTO_PERSONA_DETECTADA = "album.foto.persona.detectada";
+    public static final String RK_USUARIO_ELIMINADO = "usuario.eliminado";
 
     // --- Exchanges externos (NO declarados aquí) ---
     public static final String EXCHANGE_AUTH = "patricia.auth";

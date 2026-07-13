@@ -6,5 +6,7 @@ package com.escuelaing.usuarios.domain.model;
 public enum EstadoUsuario {
     ACTIVE,
     SUSPENDED,
-    BANNED
+    BANNED,
+    /** Cuenta marcada para eliminación permanente. Se borrará tras 24 h. */
+    PENDING_DELETION
 }

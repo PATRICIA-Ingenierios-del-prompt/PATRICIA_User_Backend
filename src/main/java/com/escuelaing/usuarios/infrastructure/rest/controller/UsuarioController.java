@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,12 +20,11 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 /**
- * Endpoints públicos (JWT requerido) para la administración de roles de
- * usuario. Solo ADMIN o MODERATOR pueden modificar roles.
+ * Endpoints públicos (JWT requerido) para la administración de usuarios.
  */
 @RestController
 @RequestMapping("/api/v1/usuarios")
-@Tag(name = "Usuarios", description = "Administración de roles de usuario")
+@Tag(name = "Usuarios", description = "Administración de usuarios")
 public class UsuarioController {
 
     private final UsuarioUseCase usuarioUseCase;
@@ -41,6 +41,22 @@ public class UsuarioController {
     public ResponseEntity<UsuarioResponse> actualizarRoles(@PathVariable UUID id,
                                                             @Valid @RequestBody ActualizarRolesRequest request) {
         Usuario actualizado = usuarioUseCase.actualizarRoles(id, request.roles());
+        return ResponseEntity.ok(mapper.toResponse(actualizado));
+    }
+
+    @DeleteMapping("/{id}/cuenta")
+    @Operation(summary = "Solicita el cierre permanente de la cuenta. "
+            + "Se aplica un período de gracia de 24 h antes del borrado definitivo.")
+    public ResponseEntity<UsuarioResponse> cerrarCuenta(@PathVariable UUID id) {
+        Usuario actualizado = usuarioUseCase.cerrarCuenta(id);
+        return ResponseEntity.ok(mapper.toResponse(actualizado));
+    }
+
+    @DeleteMapping("/{id}/cuenta/cancelar")
+    @Operation(summary = "Cancela una solicitud de cierre de cuenta pendiente "
+            + "dentro del período de gracia de 24 h.")
+    public ResponseEntity<UsuarioResponse> cancelarCierreCuenta(@PathVariable UUID id) {
+        Usuario actualizado = usuarioUseCase.cancelarCierreCuenta(id);
         return ResponseEntity.ok(mapper.toResponse(actualizado));
     }
 }
