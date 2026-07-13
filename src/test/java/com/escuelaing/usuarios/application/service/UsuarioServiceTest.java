@@ -75,7 +75,7 @@ class UsuarioServiceTest {
     // ── buscarPorId ───────────────────────────────────────────────────────────
 
     @Test
-    void buscarPorId_noExiste_lanzaUsuarioNoEncontradoException() {
+    void buscarPorId_cuandoNoExiste_lanzaUsuarioNoEncontradoException() {
         UUID id = UUID.randomUUID();
         when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.empty());
 
@@ -84,37 +84,53 @@ class UsuarioServiceTest {
     }
 
     @Test
-    void buscarPorId_existe_retornaUsuario() {
+    void buscarPorId_cuandoExiste_retornaUsuario() {
         UUID id = UUID.randomUUID();
         Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null);
         when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.of(usuario));
 
-        assertThat(usuarioService.buscarPorId(id)).isEqualTo(usuario);
+        Usuario resultado = usuarioService.buscarPorId(id);
+
+        assertThat(resultado).isEqualTo(usuario);
     }
 
     // ── buscarPorEmail ────────────────────────────────────────────────────────
 
     @Test
-    void buscarPorEmail_retornaOpcional() {
+    void buscarPorEmail_retornaUsuarioDeManeraOpcional() {
         Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null);
         when(usuarioRepository.buscarPorEmail(EMAIL)).thenReturn(Optional.of(usuario));
 
-        assertThat(usuarioService.buscarPorEmail(EMAIL)).contains(usuario);
+        Optional<Usuario> resultado = usuarioService.buscarPorEmail(EMAIL);
+
+        assertThat(resultado).contains(usuario);
+
+        when(usuarioRepository.buscarPorEmail("invalido")).thenReturn(Optional.empty());
+        assertThat(usuarioService.buscarPorEmail("invalido")).isEmpty();
     }
 
     // ── cambiarEstado ─────────────────────────────────────────────────────────
+
+    @Test
+    void cambiarEstado_cuandoUsuarioNoExiste_lanzaUsuarioNoEncontradoException() {
+        UUID id = UUID.randomUUID();
+        when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> usuarioService.cambiarEstado(id, EstadoUsuario.ACTIVE))
+                .isInstanceOf(UsuarioNoEncontradoException.class);
+    }
 
     @Test
     void cambiarEstado_aBanned_publicaUsuarioBaneado() {
         UUID id = UUID.randomUUID();
         Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null);
         when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.of(usuario));
-        when(usuarioRepository.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(usuarioRepository.guardar(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Usuario resultado = usuarioService.cambiarEstado(id, EstadoUsuario.BANNED);
 
         assertThat(resultado.getEstado()).isEqualTo(EstadoUsuario.BANNED);
-        verify(eventPublisher).publicarUsuarioBaneado(usuario.getId());
+        verify(eventPublisher, times(1)).publicarUsuarioBaneado(usuario.getId());
         verify(eventPublisher, never()).publicarUsuarioActualizado(any(), any());
     }
 
@@ -123,18 +139,19 @@ class UsuarioServiceTest {
         UUID id = UUID.randomUUID();
         Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null);
         when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.of(usuario));
-        when(usuarioRepository.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(usuarioRepository.guardar(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        usuarioService.cambiarEstado(id, EstadoUsuario.SUSPENDED);
+        Usuario resultado = usuarioService.cambiarEstado(id, EstadoUsuario.SUSPENDED);
 
-        verify(eventPublisher).publicarUsuarioActualizado(usuario.getId(), List.of("estado"));
+        assertThat(resultado.getEstado()).isEqualTo(EstadoUsuario.SUSPENDED);
+        verify(eventPublisher, times(1)).publicarUsuarioActualizado(usuario.getId(), List.of("estado"));
         verify(eventPublisher, never()).publicarUsuarioBaneado(any());
     }
 
     // ── actualizarRoles ───────────────────────────────────────────────────────
 
     @Test
-    void actualizarRoles_noExiste_lanzaUsuarioNoEncontradoException() {
+    void actualizarRoles_cuandoUsuarioNoExiste_lanzaUsuarioNoEncontradoException() {
         UUID id = UUID.randomUUID();
         when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.empty());
 
@@ -143,16 +160,16 @@ class UsuarioServiceTest {
     }
 
     @Test
-    void actualizarRoles_guardaYPublicaActualizado() {
+    void actualizarRoles_conUsuarioExistente_guardaYPublicaActualizado() {
         UUID id = UUID.randomUUID();
         Usuario usuario = Usuario.crearNuevo(EMAIL, NOMBRE, null);
         when(usuarioRepository.buscarPorId(id)).thenReturn(Optional.of(usuario));
-        when(usuarioRepository.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(usuarioRepository.guardar(any(Usuario.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Usuario resultado = usuarioService.actualizarRoles(id, Set.of(RolPlataforma.ADMIN));
 
         assertThat(resultado.getRoles()).containsExactly(RolPlataforma.ADMIN);
-        verify(eventPublisher).publicarUsuarioActualizado(usuario.getId(), List.of("roles"));
+        verify(eventPublisher, times(1)).publicarUsuarioActualizado(usuario.getId(), List.of("roles"));
     }
 
     // ── cerrarCuenta ──────────────────────────────────────────────────────────

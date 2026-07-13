@@ -32,4 +32,15 @@ public interface PerfilUseCase {
     List<String> obtenerIntereses(UUID usuarioId);
 
     List<String> actualizarIntereses(UUID usuarioId, List<String> intereses);
+
+    /**
+     * Devuelve perfiles elegibles para matching: usuarios con
+     * {@code estado = ACTIVE} y onboarding completo, excluyendo al propio
+     * usuario que solicita candidatos. Usado por matching-service vía
+     * {@code GET /internal/usuarios/candidatos-matching}.
+     *
+     * @param excluirUsuarioId usuario a excluir del resultado (quien pide los candidatos)
+     * @param limite           tamaño máximo del pool devuelto
+     */
+    List<Perfil> buscarCandidatos(UUID excluirUsuarioId, int limite);
 }

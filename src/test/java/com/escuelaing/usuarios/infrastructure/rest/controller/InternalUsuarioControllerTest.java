@@ -1,8 +1,12 @@
 package com.escuelaing.usuarios.infrastructure.rest.controller;
 
+import com.escuelaing.usuarios.domain.model.Disponibilidad;
 import com.escuelaing.usuarios.domain.model.EstadoUsuario;
+import com.escuelaing.usuarios.domain.model.Perfil;
 import com.escuelaing.usuarios.domain.model.RolPlataforma;
 import com.escuelaing.usuarios.domain.model.Usuario;
+import com.escuelaing.usuarios.domain.exception.PerfilNoEncontradoException;
+import com.escuelaing.usuarios.domain.port.in.PerfilUseCase;
 import com.escuelaing.usuarios.domain.port.in.UsuarioUseCase;
 import com.escuelaing.usuarios.infrastructure.config.SecurityConfig;
 import com.escuelaing.usuarios.infrastructure.rest.advice.GlobalExceptionHandler;
@@ -23,6 +27,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -30,8 +36,11 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = InternalUsuarioController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class, InternalUsuarioControllerTest.TestConfig.class})
@@ -43,10 +52,20 @@ class InternalUsuarioControllerTest {
 
     private static final String VALID_KEY = "test-internal-key";
 
-    @Autowired private MockMvc mockMvc;
-    @Autowired private ObjectMapper objectMapper;
-    @MockBean  private UsuarioUseCase usuarioUseCase;
-    @MockBean  private UsuarioRestMapper usuarioRestMapper;
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private UsuarioUseCase usuarioUseCase;
+
+    @MockBean
+    private PerfilUseCase perfilUseCase;
+
+    @MockBean
+    private UsuarioRestMapper usuarioRestMapper;
 
     @TestConfiguration
     static class TestConfig {
@@ -56,14 +75,6 @@ class InternalUsuarioControllerTest {
                     "test-secret-test-secret-test-secret-test-secret");
         }
     }
-
-    // helper — null en fechaSolicitudEliminacion es el caso normal
-    private UsuarioResponse resp(UUID id, EstadoUsuario estado) {
-        return new UsuarioResponse(id, "test@mail.escuelaing.edu.co", "Test",
-                Set.of(RolPlataforma.STUDENT), estado, null);
-    }
-
-    // ── GET /{id} ─────────────────────────────────────────────────────────────
 
     @Test
     void getUsuarioPorId_sinApiKey_retorna401() throws Exception {
@@ -79,37 +90,39 @@ class InternalUsuarioControllerTest {
     }
 
     @Test
-    void getUsuarioPorId_conApiKeyValida_retornaOk() throws Exception {
+    void getUsuarioPorId_conApiKeyValida_permiteElAcceso() throws Exception {
         UUID id = UUID.randomUUID();
         Usuario usuario = Usuario.crearNuevo("test@mail.escuelaing.edu.co", "Test", null);
         when(usuarioUseCase.buscarPorId(any())).thenReturn(usuario);
-        when(usuarioRestMapper.toResponse(any())).thenReturn(resp(id, EstadoUsuario.ACTIVE));
+        when(usuarioRestMapper.toResponse(any())).thenReturn(
+                new UsuarioResponse(id, "test@mail.escuelaing.edu.co", "Test", Set.of(RolPlataforma.STUDENT), EstadoUsuario.ACTIVE, null));
 
         mockMvc.perform(get("/internal/usuarios/{id}", id)
                         .header(InternalApiKeyFilter.HEADER, VALID_KEY))
                 .andExpect(status().isOk());
     }
 
-    // ── POST /find-or-create ─────────────────────────────────────────────────
-
     @Test
     void findOrCreate_sinApiKey_retorna401() throws Exception {
+        String body = objectMapper.writeValueAsString(
+                new FindOrCreateRequest("test@mail.escuelaing.edu.co", "Test", null));
+
         mockMvc.perform(post("/internal/usuarios/find-or-create")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(
-                                new FindOrCreateRequest("test@mail.escuelaing.edu.co", "Test", null))))
+                        .content(body))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void findOrCreate_creado_retorna201() throws Exception {
+    void findOrCreate_conApiKeyValida_creadoVerdadero_retorna201() throws Exception {
         UUID id = UUID.randomUUID();
         FindOrCreateRequest request = new FindOrCreateRequest("test@mail.escuelaing.edu.co", "Test", "ms-123");
         Usuario usuario = Usuario.crearNuevo("test@mail.escuelaing.edu.co", "Test", "ms-123");
+        UsuarioUseCase.ResultadoFindOrCreate resultado = new UsuarioUseCase.ResultadoFindOrCreate(usuario, true);
 
-        when(usuarioUseCase.buscarOCrear(eq("test@mail.escuelaing.edu.co"), eq("Test"), eq("ms-123")))
-                .thenReturn(new UsuarioUseCase.ResultadoFindOrCreate(usuario, true));
-        when(usuarioRestMapper.toResponse(usuario)).thenReturn(resp(id, EstadoUsuario.ACTIVE));
+        when(usuarioUseCase.buscarOCrear(eq("test@mail.escuelaing.edu.co"), eq("Test"), eq("ms-123"))).thenReturn(resultado);
+        when(usuarioRestMapper.toResponse(usuario)).thenReturn(
+                new UsuarioResponse(id, "test@mail.escuelaing.edu.co", "Test", Set.of(RolPlataforma.STUDENT), EstadoUsuario.ACTIVE, null));
 
         mockMvc.perform(post("/internal/usuarios/find-or-create")
                         .header(InternalApiKeyFilter.HEADER, VALID_KEY)
@@ -120,14 +133,15 @@ class InternalUsuarioControllerTest {
     }
 
     @Test
-    void findOrCreate_existente_retorna200() throws Exception {
+    void findOrCreate_conApiKeyValida_creadoFalso_retorna200() throws Exception {
         UUID id = UUID.randomUUID();
         FindOrCreateRequest request = new FindOrCreateRequest("test@mail.escuelaing.edu.co", "Test", "ms-123");
         Usuario usuario = Usuario.crearNuevo("test@mail.escuelaing.edu.co", "Test", "ms-123");
+        UsuarioUseCase.ResultadoFindOrCreate resultado = new UsuarioUseCase.ResultadoFindOrCreate(usuario, false);
 
-        when(usuarioUseCase.buscarOCrear(any(), any(), any()))
-                .thenReturn(new UsuarioUseCase.ResultadoFindOrCreate(usuario, false));
-        when(usuarioRestMapper.toResponse(usuario)).thenReturn(resp(id, EstadoUsuario.ACTIVE));
+        when(usuarioUseCase.buscarOCrear(eq("test@mail.escuelaing.edu.co"), eq("Test"), eq("ms-123"))).thenReturn(resultado);
+        when(usuarioRestMapper.toResponse(usuario)).thenReturn(
+                new UsuarioResponse(id, "test@mail.escuelaing.edu.co", "Test", Set.of(RolPlataforma.STUDENT), EstadoUsuario.ACTIVE, null));
 
         mockMvc.perform(post("/internal/usuarios/find-or-create")
                         .header(InternalApiKeyFilter.HEADER, VALID_KEY)
@@ -137,21 +151,19 @@ class InternalUsuarioControllerTest {
                 .andExpect(jsonPath("$.email").value("test@mail.escuelaing.edu.co"));
     }
 
-    // ── GET /buscar ───────────────────────────────────────────────────────────
-
     @Test
     void buscarPorEmail_sinApiKey_retorna401() throws Exception {
-        mockMvc.perform(get("/internal/usuarios/buscar")
-                        .param("email", "test@mail.escuelaing.edu.co"))
+        mockMvc.perform(get("/internal/usuarios/buscar").param("email", "test@mail.escuelaing.edu.co"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void buscarPorEmail_encontrado_retorna200() throws Exception {
+    void buscarPorEmail_conApiKeyValida_usuarioEncontrado_retorna200() throws Exception {
         UUID id = UUID.randomUUID();
         Usuario usuario = Usuario.crearNuevo("test@mail.escuelaing.edu.co", "Test", null);
         when(usuarioUseCase.buscarPorEmail("test@mail.escuelaing.edu.co")).thenReturn(Optional.of(usuario));
-        when(usuarioRestMapper.toResponse(usuario)).thenReturn(resp(id, EstadoUsuario.ACTIVE));
+        when(usuarioRestMapper.toResponse(usuario)).thenReturn(
+                new UsuarioResponse(id, "test@mail.escuelaing.edu.co", "Test", Set.of(RolPlataforma.STUDENT), EstadoUsuario.ACTIVE, null));
 
         mockMvc.perform(get("/internal/usuarios/buscar")
                         .header(InternalApiKeyFilter.HEADER, VALID_KEY)
@@ -161,8 +173,8 @@ class InternalUsuarioControllerTest {
     }
 
     @Test
-    void buscarPorEmail_noEncontrado_retorna404() throws Exception {
-        when(usuarioUseCase.buscarPorEmail(any())).thenReturn(Optional.empty());
+    void buscarPorEmail_conApiKeyValida_usuarioNoEncontrado_retorna404() throws Exception {
+        when(usuarioUseCase.buscarPorEmail("test@mail.escuelaing.edu.co")).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/internal/usuarios/buscar")
                         .header(InternalApiKeyFilter.HEADER, VALID_KEY)
@@ -170,31 +182,100 @@ class InternalUsuarioControllerTest {
                 .andExpect(status().isNotFound());
     }
 
-    // ── PUT /{id}/estado ──────────────────────────────────────────────────────
-
     @Test
     void actualizarEstado_sinApiKey_retorna401() throws Exception {
+        ActualizarEstadoRequest request = new ActualizarEstadoRequest(EstadoUsuario.SUSPENDED);
         mockMvc.perform(put("/internal/usuarios/{id}/estado", UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(
-                                new ActualizarEstadoRequest(EstadoUsuario.SUSPENDED))))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void actualizarEstado_conApiKeyValida_retornaOk200() throws Exception {
         UUID id = UUID.randomUUID();
+        ActualizarEstadoRequest request = new ActualizarEstadoRequest(EstadoUsuario.SUSPENDED);
         Usuario usuario = Usuario.crearNuevo("test@mail.escuelaing.edu.co", "Test", null);
 
+        UsuarioResponse response = new UsuarioResponse(
+                id, "test@mail.escuelaing.edu.co", "Test", Set.of(RolPlataforma.STUDENT), EstadoUsuario.SUSPENDED, null
+        );
+
         when(usuarioUseCase.cambiarEstado(eq(id), eq(EstadoUsuario.SUSPENDED))).thenReturn(usuario);
-        when(usuarioRestMapper.toResponse(usuario)).thenReturn(resp(id, EstadoUsuario.SUSPENDED));
+        when(usuarioRestMapper.toResponse(usuario)).thenReturn(response);
 
         mockMvc.perform(put("/internal/usuarios/{id}/estado", id)
                         .header(InternalApiKeyFilter.HEADER, VALID_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(
-                                new ActualizarEstadoRequest(EstadoUsuario.SUSPENDED))))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("SUSPENDED"));
+    }
+
+    @Test
+    void obtenerPerfilMatching_sinApiKey_retorna401() throws Exception {
+        mockMvc.perform(get("/internal/usuarios/{id}/perfil-matching", UUID.randomUUID()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void obtenerPerfilMatching_conApiKeyValida_retorna200() throws Exception {
+        UUID id = UUID.randomUUID();
+        Usuario usuario = Usuario.crearNuevo("test@mail.escuelaing.edu.co", "Test", null);
+        Perfil perfil = Perfil.reconstruir(
+                UUID.randomUUID(), id, "Test", "Apellido", "bio", "Ingeniería de Sistemas", null,
+                5, null, null, List.of("Música", "Deportes"), Disponibilidad.DISPONIBLE, null,
+                true, Instant.now());
+
+        when(usuarioUseCase.buscarPorId(id)).thenReturn(usuario);
+        when(perfilUseCase.obtenerPerfil(id)).thenReturn(perfil);
+
+        mockMvc.perform(get("/internal/usuarios/{id}/perfil-matching", id)
+                        .header(InternalApiKeyFilter.HEADER, VALID_KEY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("ACTIVE"))
+                .andExpect(jsonPath("$.carrera").value("Ingeniería de Sistemas"))
+                .andExpect(jsonPath("$.semestre").value(5))
+                .andExpect(jsonPath("$.disponibilidad").value("DISPONIBLE"));
+    }
+
+    @Test
+    void obtenerPerfilMatching_sinOnboardingCompleto_retorna404() throws Exception {
+        UUID id = UUID.randomUUID();
+        Usuario usuario = Usuario.crearNuevo("test@mail.escuelaing.edu.co", "Test", null);
+
+        when(usuarioUseCase.buscarPorId(id)).thenReturn(usuario);
+        when(perfilUseCase.obtenerPerfil(id)).thenThrow(new PerfilNoEncontradoException(id));
+
+        mockMvc.perform(get("/internal/usuarios/{id}/perfil-matching", id)
+                        .header(InternalApiKeyFilter.HEADER, VALID_KEY))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void buscarCandidatosMatching_sinApiKey_retorna401() throws Exception {
+        mockMvc.perform(get("/internal/usuarios/candidatos-matching")
+                        .param("excluirUsuarioId", UUID.randomUUID().toString())
+                        .param("limite", "50"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void buscarCandidatosMatching_conApiKeyValida_retorna200ConEstadoActive() throws Exception {
+        UUID excluirId = UUID.randomUUID();
+        Perfil candidato = Perfil.reconstruir(
+                UUID.randomUUID(), UUID.randomUUID(), "Ana", "Gómez", null, "Diseño Industrial", null,
+                3, null, null, List.of("Cine"), Disponibilidad.OCUPADO, null, true, Instant.now());
+
+        when(perfilUseCase.buscarCandidatos(excluirId, 50)).thenReturn(List.of(candidato));
+
+        mockMvc.perform(get("/internal/usuarios/candidatos-matching")
+                        .header(InternalApiKeyFilter.HEADER, VALID_KEY)
+                        .param("excluirUsuarioId", excluirId.toString())
+                        .param("limite", "50"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].estado").value("ACTIVE"))
+                .andExpect(jsonPath("$[0].carrera").value("Diseño Industrial"))
+                .andExpect(jsonPath("$[0].disponibilidad").value("OCUPADO"));
     }
 }
