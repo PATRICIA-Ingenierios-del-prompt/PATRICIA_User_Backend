@@ -43,4 +43,11 @@ public interface PerfilUseCase {
      * @param limite           tamaño máximo del pool devuelto
      */
     List<Perfil> buscarCandidatos(UUID excluirUsuarioId, int limite);
+
+    /**
+     * Busca usuarios por nombre, apellidos o carrera (texto libre), entre
+     * todos los usuarios ACTIVE de la plataforma (no solo los sugeridos por
+     * matching), excluyendo a quien realiza la búsqueda.
+     */
+    List<Perfil> buscarUsuarios(String query, UUID excluirUsuarioId, int limite);
 }

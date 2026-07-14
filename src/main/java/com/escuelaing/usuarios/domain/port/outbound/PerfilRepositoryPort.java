@@ -23,4 +23,11 @@ public interface PerfilRepositoryPort {
      * esa condición.
      */
     List<Perfil> buscarCandidatos(UUID excluirUsuarioId, int limite);
+
+    /**
+     * Búsqueda de usuarios por nombre, apellidos o carrera (contiene,
+     * insensible a mayúsculas/acentos según collation de la BD). Solo
+     * usuarios ACTIVE con onboarding completo, excluyendo al que busca.
+     */
+    List<Perfil> buscarPorNombreOCarrera(String query, UUID excluirUsuarioId, int limite);
 }

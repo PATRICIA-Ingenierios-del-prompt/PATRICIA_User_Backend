@@ -46,4 +46,12 @@ public class PerfilRepositoryAdapter implements PerfilRepositoryPort {
                 .map(mapper::toDomain)
                 .toList();
     }
+
+    @Override
+    public List<Perfil> buscarPorNombreOCarrera(String query, UUID excluirUsuarioId, int limite) {
+        return jpaRepository.buscarPorNombreOCarrera(query, excluirUsuarioId, PageRequest.of(0, limite))
+                .stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
 }

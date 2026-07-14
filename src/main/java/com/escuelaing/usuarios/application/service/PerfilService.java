@@ -60,6 +60,16 @@ public class PerfilService implements PerfilUseCase {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Perfil> buscarUsuarios(String query, UUID excluirUsuarioId, int limite) {
+        if (query == null || query.isBlank()) {
+            return List.of();
+        }
+        int limiteSeguro = Math.min(Math.max(limite, 1), 50);
+        return perfilRepository.buscarPorNombreOCarrera(query.trim(), excluirUsuarioId, limiteSeguro);
+    }
+
+    @Override
     @CacheEvict(value = "perfiles", key = "#usuarioId")
     public Perfil actualizarPerfil(UUID usuarioId, String bio, String carrera, Integer semestre,
                                    List<String> intereses, Disponibilidad disponibilidad) {
