@@ -220,4 +220,46 @@ class PerfilControllerTest {
                 .andExpect(jsonPath("$[0]").value("Gimnasio"))
                 .andExpect(jsonPath("$[1]").value("Cocina"));
     }
+
+    // ── buscar ───────────────────────────────────────────────────────────────
+
+    @Test
+    void buscarUsuarios_sinToken_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v1/usuarios/buscar").param("q", "ana"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void buscarUsuarios_conTokenValido_retornaListaMapeada200() throws Exception {
+        UUID usuarioId = UUID.randomUUID();
+        String token = createBearerToken(usuarioId, List.of("STUDENT"));
+        Perfil encontrado = Perfil.crearVacio(UUID.randomUUID());
+        PerfilResponse response = new PerfilResponse(encontrado.getId(), encontrado.getUsuarioId(),
+                "Ana", "Díaz", null, "Ingeniería de Sistemas", null, 5, null, null,
+                List.of(), Disponibilidad.DISPONIBLE, null, true);
+
+        when(perfilUseCase.buscarUsuarios("ana", usuarioId, 20)).thenReturn(List.of(encontrado));
+        when(mapper.toResponse(encontrado)).thenReturn(response);
+
+        mockMvc.perform(get("/api/v1/usuarios/buscar")
+                        .param("q", "ana")
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].nombre").value("Ana"))
+                .andExpect(jsonPath("$[0].carrera").value("Ingeniería de Sistemas"));
+    }
+
+    @Test
+    void buscarUsuarios_conLimiteCustom_loPasaAlCasoDeUso() throws Exception {
+        UUID usuarioId = UUID.randomUUID();
+        String token = createBearerToken(usuarioId, List.of("STUDENT"));
+        when(perfilUseCase.buscarUsuarios("ana", usuarioId, 5)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/usuarios/buscar")
+                        .param("q", "ana")
+                        .param("limite", "5")
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray());
+    }
 }

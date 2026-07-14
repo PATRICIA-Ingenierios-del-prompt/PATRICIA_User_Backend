@@ -12,11 +12,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -84,5 +87,32 @@ public class PerfilController {
                                                             @Valid @RequestBody ActualizarInteresesRequest request) {
         List<String> actualizados = perfilUseCase.actualizarIntereses(id, request.intereses());
         return ResponseEntity.ok(actualizados);
+    }
+
+    @GetMapping("/buscar")
+    @Operation(summary = "Busca usuarios por nombre, apellidos o carrera, entre todos los usuarios "
+            + "ACTIVE de la plataforma (no limitado a sugerencias de matching). Excluye al usuario "
+            + "autenticado de sus propios resultados.")
+    public ResponseEntity<List<PerfilResponse>> buscarUsuarios(
+            @RequestParam("q") String query,
+            @RequestParam(defaultValue = "20") int limite,
+            Authentication auth) {
+        UUID usuarioId = usuarioIdAutenticado(auth);
+        List<Perfil> resultados = perfilUseCase.buscarUsuarios(query, usuarioId, limite);
+        List<PerfilResponse> respuesta = resultados.stream().map(mapper::toResponse).toList();
+        return ResponseEntity.ok(respuesta);
+    }
+
+    /** Extrae el UUID del principal que pobló JwtAuthenticationFilter. */
+    private UUID usuarioIdAutenticado(Authentication auth) {
+        if (auth == null || !(auth.getPrincipal() instanceof UUID uuid)) {
+            // No debería ocurrir nunca: SecurityConfig exige authenticated() en
+            // /api/v1/** y JwtAuthenticationFilter siempre puebla un UUID cuando
+            // la autenticación es válida. Si esto se dispara, es un bug de
+            // configuración -- hay que rechazar la petición, jamás suplantar a
+            // un usuario real.
+            throw new AccessDeniedException("No se pudo determinar el usuario autenticado");
+        }
+        return uuid;
     }
 }

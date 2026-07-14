@@ -29,4 +29,25 @@ public interface PerfilJpaRepository extends JpaRepository<PerfilEntity, UUID> {
             ORDER BY p.fechaActualizacion DESC
             """)
     List<PerfilEntity> buscarCandidatos(@Param("excluirUsuarioId") UUID excluirUsuarioId, Pageable pageable);
+
+    /**
+     * Búsqueda por nombre/apellidos/carrera (LIKE, insensible a mayúsculas),
+     * solo usuarios ACTIVE con onboarding completo, excluyendo a quien busca.
+     */
+    @Query("""
+            SELECT p FROM PerfilEntity p, UsuarioEntity u
+            WHERE u.id = p.usuarioId
+              AND u.estado = com.escuelaing.usuarios.domain.model.EstadoUsuario.ACTIVE
+              AND p.onboardingCompleto = true
+              AND p.usuarioId <> :excluirUsuarioId
+              AND (
+                    LOWER(p.nombre) LIKE LOWER(CONCAT('%', :query, '%'))
+                 OR LOWER(p.apellidos) LIKE LOWER(CONCAT('%', :query, '%'))
+                 OR LOWER(p.carrera) LIKE LOWER(CONCAT('%', :query, '%'))
+              )
+            ORDER BY p.nombre ASC
+            """)
+    List<PerfilEntity> buscarPorNombreOCarrera(@Param("query") String query,
+                                                @Param("excluirUsuarioId") UUID excluirUsuarioId,
+                                                Pageable pageable);
 }

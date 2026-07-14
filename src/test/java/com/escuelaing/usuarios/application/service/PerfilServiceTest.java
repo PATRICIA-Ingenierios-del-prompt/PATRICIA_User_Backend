@@ -22,6 +22,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -241,5 +242,43 @@ class PerfilServiceTest {
         assertThat(resultado.getUrlFotoPerfil()).isNull();
         assertThat(resultado.isOnboardingCompleto()).isTrue();
         verify(fotoPerfilStorage, never()).subirFotoPerfil(any(), any());
+    }
+
+    // ── buscarUsuarios ───────────────────────────────────────────────────────
+
+    @Test
+    void buscarUsuarios_conQueryEnBlanco_devuelveListaVaciaSinConsultarRepositorio() {
+        List<Perfil> resultado = perfilService.buscarUsuarios("   ", usuarioId, 20);
+
+        assertThat(resultado).isEmpty();
+        verifyNoInteractions(perfilRepository);
+    }
+
+    @Test
+    void buscarUsuarios_conQueryNula_devuelveListaVacia() {
+        assertThat(perfilService.buscarUsuarios(null, usuarioId, 20)).isEmpty();
+    }
+
+    @Test
+    void buscarUsuarios_conQueryValida_delegaAlRepositorioConTextoRecortado() {
+        Perfil encontrado = Perfil.crearVacio(UUID.randomUUID());
+        when(perfilRepository.buscarPorNombreOCarrera("sistemas", usuarioId, 20))
+                .thenReturn(List.of(encontrado));
+
+        List<Perfil> resultado = perfilService.buscarUsuarios("  sistemas  ", usuarioId, 20);
+
+        assertThat(resultado).containsExactly(encontrado);
+        verify(perfilRepository).buscarPorNombreOCarrera("sistemas", usuarioId, 20);
+    }
+
+    @Test
+    void buscarUsuarios_conLimiteFueraDeRango_loAcotaEntre1y50() {
+        when(perfilRepository.buscarPorNombreOCarrera(any(), any(), anyInt())).thenReturn(List.of());
+
+        perfilService.buscarUsuarios("ana", usuarioId, 500);
+        verify(perfilRepository).buscarPorNombreOCarrera("ana", usuarioId, 50);
+
+        perfilService.buscarUsuarios("ana", usuarioId, -3);
+        verify(perfilRepository).buscarPorNombreOCarrera("ana", usuarioId, 1);
     }
 }
