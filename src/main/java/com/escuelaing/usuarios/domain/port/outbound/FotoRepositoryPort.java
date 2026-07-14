@@ -3,17 +3,17 @@ package com.escuelaing.usuarios.domain.port.outbound;
 import com.escuelaing.usuarios.domain.model.Foto;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
  * Puerto de salida para la persistencia de las fotos del álbum.
- * Las operaciones de agregar/eliminar fotos se resuelven a nivel de
- * agregado AlbumFotos en la capa de aplicación; este puerto sólo expone
- * primitivas de persistencia.
  */
 public interface FotoRepositoryPort {
 
     List<Foto> buscarPorUsuarioId(UUID usuarioId);
+
+    Optional<Foto> buscarPorId(UUID fotoId);
 
     Foto guardar(Foto foto);
 

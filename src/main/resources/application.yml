@@ -51,6 +51,8 @@ reportes:
 clients:
   auth-service:
     url: ${AUTH_SERVICE_URL:http://localhost:8081}
+  llm-backend:
+    url: ${LLM_BACKEND_URL:http://localhost:8083}
 
 
 aws:

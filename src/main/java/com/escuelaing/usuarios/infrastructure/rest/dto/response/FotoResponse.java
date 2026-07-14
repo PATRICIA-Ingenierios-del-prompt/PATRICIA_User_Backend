@@ -8,5 +8,6 @@ public record FotoResponse(
         UUID usuarioId,
         String urlFoto,
         int orden,
-        Instant fechaSubida
+        Instant fechaSubida,
+        boolean tienePersonaEnFoto
 ) {}

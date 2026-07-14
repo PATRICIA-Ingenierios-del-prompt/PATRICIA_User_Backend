@@ -7,8 +7,11 @@ import com.escuelaing.usuarios.infrastructure.persistence.mapper.UsuarioEntityMa
 import com.escuelaing.usuarios.infrastructure.persistence.repository.UsuarioJpaRepository;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Adaptador de persistencia para el agregado Usuario. Implementa el puerto
@@ -45,5 +48,17 @@ public class UsuarioRepositoryAdapter implements UsuarioRepositoryPort {
     @Override
     public boolean existePorEmail(String email) {
         return jpaRepository.existsByEmail(email);
+    }
+
+    @Override
+    public List<Usuario> buscarPendientesDeEliminacionAnterioresA(Instant limite) {
+        return jpaRepository.findPendingDeletionBefore(limite).stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public void eliminarPorId(UUID id) {
+        jpaRepository.deleteById(id);
     }
 }

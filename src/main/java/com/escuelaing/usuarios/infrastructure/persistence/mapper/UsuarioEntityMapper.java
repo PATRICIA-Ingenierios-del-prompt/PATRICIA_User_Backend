@@ -25,7 +25,8 @@ public abstract class UsuarioEntityMapper {
                 entity.getFechaCreacion(),
                 entity.getFechaActualizacion(),
                 entity.getUltimoAcceso(),
-                entity.getContadorReportes()
+                entity.getContadorReportes(),
+                entity.getFechaSolicitudEliminacion()
         );
     }
 
@@ -44,6 +45,7 @@ public abstract class UsuarioEntityMapper {
                 .fechaActualizacion(usuario.getFechaActualizacion())
                 .ultimoAcceso(usuario.getUltimoAcceso())
                 .contadorReportes(usuario.getContadorReportes())
+                .fechaSolicitudEliminacion(usuario.getFechaSolicitudEliminacion())
                 .build();
     }
 }

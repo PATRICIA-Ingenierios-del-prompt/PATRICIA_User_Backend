@@ -39,4 +39,8 @@ public class FotoEntity {
 
     @Column(name = "fecha_subida", nullable = false)
     private Instant fechaSubida;
+
+    @Column(name = "tiene_persona_en_foto", nullable = false)
+    @Builder.Default
+    private boolean tienePersonaEnFoto = false;
 }

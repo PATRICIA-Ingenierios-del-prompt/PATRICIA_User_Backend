@@ -72,4 +72,7 @@ public class UsuarioEntity {
     @Column(name = "contador_reportes", nullable = false)
     @Builder.Default
     private int contadorReportes = 0;
+
+    @Column(name = "fecha_solicitud_eliminacion")
+    private Instant fechaSolicitudEliminacion;
 }
