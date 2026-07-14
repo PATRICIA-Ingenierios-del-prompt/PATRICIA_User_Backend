@@ -39,17 +39,30 @@ public class RabbitMqConfig {
     public static final String RK_ALBUM_FOTO_ELIMINADA = "album.foto.eliminada";
     public static final String RK_ALBUM_FOTO_PERSONA_DETECTADA = "album.foto.persona.detectada";
     public static final String RK_USUARIO_ELIMINADO = "usuario.eliminado";
+    public static final String RK_LOGRO_DESBLOQUEADO = "logro.desbloqueado";
 
     // --- Exchanges externos (NO declarados aquí) ---
     public static final String EXCHANGE_AUTH = "patricia.auth";
     public static final String EXCHANGE_PARCHES = "patricia.parches";
     public static final String EXCHANGE_SESIONES = "patricia.sesiones";
+    public static final String EXCHANGE_EVENTOS = "event.events";
+    public static final String EXCHANGE_MATCHING = "patricia.matching";
+    public static final String EXCHANGE_PARCHE_EVENTS = "parche.events";
+
+    // Exchange propio de logros (publicado por este servicio)
+    public static final String EXCHANGE_LOGROS = "patricia.logros";
 
     // --- Colas propias de usuarios-service ---
     public static final String QUEUE_AUTH_SESIONES = "usuarios.auth-sesiones";
     public static final String QUEUE_AUTH_FALLIDOS = "usuarios.auth-fallidos";
     public static final String QUEUE_REPORTES = "usuarios.reportes";
     public static final String QUEUE_SESIONES_CERRADAS = "usuarios.sesiones-cerradas";
+
+    // Logros (consumen eventos de otros MS para acreditar logros/monedas)
+    public static final String QUEUE_LOGROS_EVENTO_CREADO = "usuarios.logros.evento-creado";
+    public static final String QUEUE_LOGROS_EVENTO_PARTICIPANTE = "usuarios.logros.evento-participante";
+    public static final String QUEUE_LOGROS_MATCH_CONFIRMADO = "usuarios.logros.match-confirmado";
+    public static final String QUEUE_LOGROS_PARCHE_UNIDO = "usuarios.logros.parche-unido";
 
     // --- Routing keys consumidas ---
     public static final String RK_SESION_INICIADA = "sesion.iniciada";
@@ -65,6 +78,11 @@ public class RabbitMqConfig {
     @Bean
     public TopicExchange exchangeUsuarios() {
         return new TopicExchange(EXCHANGE_USUARIOS, true, false);
+    }
+
+    @Bean
+    public TopicExchange exchangeLogros() {
+        return new TopicExchange(EXCHANGE_LOGROS, true, false);
     }
 
     // ---- Colas consumidas por usuarios-service ----
@@ -118,5 +136,51 @@ public class RabbitMqConfig {
     public Declarable bindingSesionesCerradas() {
         return new Binding(QUEUE_SESIONES_CERRADAS, Binding.DestinationType.QUEUE,
                 EXCHANGE_SESIONES, RK_SESION_CERRADA, null);
+    }
+
+    // ---- Colas y bindings de logros (consumen eventos de otros MS) ----
+
+    @Bean
+    public Queue queueLogrosEventoCreado() {
+        return QueueBuilder.durable(QUEUE_LOGROS_EVENTO_CREADO).build();
+    }
+
+    @Bean
+    public Queue queueLogrosEventoParticipante() {
+        return QueueBuilder.durable(QUEUE_LOGROS_EVENTO_PARTICIPANTE).build();
+    }
+
+    @Bean
+    public Queue queueLogrosMatchConfirmado() {
+        return QueueBuilder.durable(QUEUE_LOGROS_MATCH_CONFIRMADO).build();
+    }
+
+    @Bean
+    public Queue queueLogrosParche() {
+        return QueueBuilder.durable(QUEUE_LOGROS_PARCHE_UNIDO).build();
+    }
+
+    @Bean
+    public Declarable bindingLogrosEventoCreado() {
+        return new Binding(QUEUE_LOGROS_EVENTO_CREADO, Binding.DestinationType.QUEUE,
+                EXCHANGE_EVENTOS, "event.created", null);
+    }
+
+    @Bean
+    public Declarable bindingLogrosEventoParticipante() {
+        return new Binding(QUEUE_LOGROS_EVENTO_PARTICIPANTE, Binding.DestinationType.QUEUE,
+                EXCHANGE_EVENTOS, "event.participant.joined", null);
+    }
+
+    @Bean
+    public Declarable bindingLogrosMatchConfirmado() {
+        return new Binding(QUEUE_LOGROS_MATCH_CONFIRMADO, Binding.DestinationType.QUEUE,
+                EXCHANGE_MATCHING, "match.confirmado", null);
+    }
+
+    @Bean
+    public Declarable bindingLogrosParche() {
+        return new Binding(QUEUE_LOGROS_PARCHE_UNIDO, Binding.DestinationType.QUEUE,
+                EXCHANGE_PARCHE_EVENTS, "parche.member.joined", null);
     }
 }
