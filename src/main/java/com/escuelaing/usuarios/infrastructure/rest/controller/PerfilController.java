@@ -103,14 +103,8 @@ public class PerfilController {
         return ResponseEntity.ok(respuesta);
     }
 
-    /** Extrae el UUID del principal que pobló JwtAuthenticationFilter. */
     private UUID usuarioIdAutenticado(Authentication auth) {
         if (auth == null || !(auth.getPrincipal() instanceof UUID uuid)) {
-            // No debería ocurrir nunca: SecurityConfig exige authenticated() en
-            // /api/v1/** y JwtAuthenticationFilter siempre puebla un UUID cuando
-            // la autenticación es válida. Si esto se dispara, es un bug de
-            // configuración -- hay que rechazar la petición, jamás suplantar a
-            // un usuario real.
             throw new AccessDeniedException("No se pudo determinar el usuario autenticado");
         }
         return uuid;

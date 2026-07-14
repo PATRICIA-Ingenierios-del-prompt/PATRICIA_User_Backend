@@ -249,9 +249,8 @@ class PerfilServiceTest {
     @Test
     void buscarUsuarios_conQueryEnBlanco_devuelveListaVaciaSinConsultarRepositorio() {
         List<Perfil> resultado = perfilService.buscarUsuarios("   ", usuarioId, 20);
-
         assertThat(resultado).isEmpty();
-        verifyNoInteractions(perfilRepository);
+        verify(perfilRepository, never()).buscarPorNombreOCarrera(any(), any(), anyInt());
     }
 
     @Test

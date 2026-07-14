@@ -48,10 +48,6 @@ public interface PerfilUseCase {
      * Busca usuarios por nombre, apellidos o carrera (texto libre), entre
      * todos los usuarios ACTIVE de la plataforma (no solo los sugeridos por
      * matching), excluyendo a quien realiza la búsqueda.
-     *
-     * @param query           texto de búsqueda; en blanco devuelve lista vacía
-     * @param excluirUsuarioId usuario que busca (se excluye de sus propios resultados)
-     * @param limite          tamaño máximo de resultados
      */
     List<Perfil> buscarUsuarios(String query, UUID excluirUsuarioId, int limite);
 }
