@@ -148,6 +148,65 @@ class LogroServiceTest {
         verify(logroRepository, never()).otorgarSiNoExiste(any(), eq(LogroTipo.MONA_CIENTIFICA), anyInt());
     }
 
+    // ── procesarParcheCreado ("crea", distinto de "únete") ──────────────────
+
+    @Test
+    void procesarParcheCreado_technology_noOtorgaCoder_porqueEsSoloUnete() {
+        logroService.procesarParcheCreado(usuarioId, UUID.randomUUID(), "TECHNOLOGY");
+
+        verify(logroRepository, never()).otorgarSiNoExiste(any(), eq(LogroTipo.MONA_CODER), anyInt());
+    }
+
+    @Test
+    void procesarParcheCreado_sport_noOtorgaAireLibre_porqueEsSoloUnete() {
+        logroService.procesarParcheCreado(usuarioId, UUID.randomUUID(), "SPORT");
+
+        verify(logroRepository, never()).otorgarSiNoExiste(any(), eq(LogroTipo.MONA_AIRE_LIBRE), anyInt());
+    }
+
+    @Test
+    void procesarParcheCreado_music_otorgaDjYMusica() {
+        when(logroRepository.otorgarSiNoExiste(eq(usuarioId), any(LogroTipo.class), anyInt())).thenReturn(true);
+
+        logroService.procesarParcheCreado(usuarioId, UUID.randomUUID(), "MUSIC");
+
+        verify(logroRepository).otorgarSiNoExiste(usuarioId, LogroTipo.MONA_DJ, LogroTipo.MONA_DJ.getXp());
+        verify(logroRepository).otorgarSiNoExiste(usuarioId, LogroTipo.MONA_MUSICA, LogroTipo.MONA_MUSICA.getXp());
+    }
+
+    @Test
+    void procesarParcheCreado_entertainment_otorgaCulturaYGamer() {
+        when(logroRepository.otorgarSiNoExiste(eq(usuarioId), any(LogroTipo.class), anyInt())).thenReturn(true);
+
+        logroService.procesarParcheCreado(usuarioId, UUID.randomUUID(), "ENTERTAINMENT");
+
+        verify(logroRepository).otorgarSiNoExiste(usuarioId, LogroTipo.MONA_CULTURA, LogroTipo.MONA_CULTURA.getXp());
+        verify(logroRepository).otorgarSiNoExiste(usuarioId, LogroTipo.MONA_GAMER, LogroTipo.MONA_GAMER.getXp());
+    }
+
+    @Test
+    void procesarParcheCreado_variety_otorgaFoodieYRegistraParaTranquila() {
+        UUID parcheId = UUID.randomUUID();
+        when(logroRepository.otorgarSiNoExiste(eq(usuarioId), eq(LogroTipo.MONA_FOODIE), anyInt())).thenReturn(true);
+
+        logroService.procesarParcheCreado(usuarioId, parcheId, "VARIETY");
+
+        verify(logroRepository).otorgarSiNoExiste(usuarioId, LogroTipo.MONA_FOODIE, LogroTipo.MONA_FOODIE.getXp());
+        verify(senalRepository).registrarParche(usuarioId, parcheId, CategoriaActividad.VARIETY);
+    }
+
+    @Test
+    void procesarParcheCreado_study_cuentaHaciaEstudiosaIgualQueUnirse() {
+        UUID parcheId = UUID.randomUUID();
+        when(senalRepository.registrarParche(usuarioId, parcheId, CategoriaActividad.STUDY)).thenReturn(true);
+        when(senalRepository.contarParchesDistintosPorCategoria(usuarioId, CategoriaActividad.STUDY)).thenReturn(3L);
+        when(logroRepository.otorgarSiNoExiste(eq(usuarioId), eq(LogroTipo.MONA_ESTUDIOSA), anyInt())).thenReturn(true);
+
+        logroService.procesarParcheCreado(usuarioId, parcheId, "STUDY");
+
+        verify(logroRepository).otorgarSiNoExiste(usuarioId, LogroTipo.MONA_ESTUDIOSA, LogroTipo.MONA_ESTUDIOSA.getXp());
+    }
+
     @Test
     void procesarActividadEvento_variety_otorgaSoloCientifica_noFoodie() {
         when(logroRepository.otorgarSiNoExiste(eq(usuarioId), any(LogroTipo.class), anyInt())).thenReturn(true);
