@@ -4,11 +4,10 @@ import com.escuelaing.usuarios.domain.port.outbound.PersonaDetectorPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.Duration;
 import java.util.Map;
 
 /**
@@ -30,13 +29,13 @@ public class PersonaDetectorAdapter implements PersonaDetectorPort {
     private final String detectorUrl;
 
     public PersonaDetectorAdapter(
-            RestTemplateBuilder builder,
             @Value("${person-detector.url:http://localhost:8090}") String detectorUrl) {
 
-        this.restTemplate = builder
-                .connectTimeout(Duration.ofSeconds(5))
-                .readTimeout(Duration.ofSeconds(30))
-                .build();
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5_000);   // 5 seconds
+        factory.setReadTimeout(30_000);     // 30 seconds
+
+        this.restTemplate = new RestTemplate(factory);
         this.detectorUrl = detectorUrl;
     }
 
