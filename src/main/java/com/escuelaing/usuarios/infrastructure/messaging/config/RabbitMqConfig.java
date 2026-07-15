@@ -59,6 +59,7 @@ public class RabbitMqConfig {
     public static final String QUEUE_REPORTES = "usuarios.reportes";
     public static final String QUEUE_SESIONES_CERRADAS = "usuarios.sesiones-cerradas";
     public static final String QUEUE_LOGROS_PARCHE_UNIDO = "usuarios.logros-parche-unido";
+    public static final String QUEUE_LOGROS_PARCHE_CREADO = "usuarios.logros-parche-creado";
     public static final String QUEUE_LOGROS_EVENTO_CREADO = "usuarios.logros-evento-creado";
     public static final String QUEUE_LOGROS_EVENTO_PARTICIPANTE = "usuarios.logros-evento-participante";
     public static final String QUEUE_LOGROS_MATCH_CONFIRMADO = "usuarios.logros-match-confirmado";
@@ -69,6 +70,7 @@ public class RabbitMqConfig {
     public static final String RK_REPORTE_EMITIDO = "reporte.emitido";
     public static final String RK_SESION_CERRADA = "sesion.cerrada";
     public static final String RK_PARCHE_MEMBER_JOINED = "parche.member.joined";
+    public static final String RK_PARCHE_CREATED = "parche.created";
     public static final String RK_EVENT_CREATED = "event.created";
     public static final String RK_EVENT_PARTICIPANT_JOINED = "event.participant.joined";
     public static final String RK_MATCH_CONFIRMADO = "match.confirmado";
@@ -113,6 +115,11 @@ public class RabbitMqConfig {
     @Bean
     public Queue queueLogrosParcheUnido() {
         return QueueBuilder.durable(QUEUE_LOGROS_PARCHE_UNIDO).build();
+    }
+
+    @Bean
+    public Queue queueLogrosParcheCreado() {
+        return QueueBuilder.durable(QUEUE_LOGROS_PARCHE_CREADO).build();
     }
 
     @Bean
@@ -166,6 +173,12 @@ public class RabbitMqConfig {
     public Declarable bindingLogrosParcheUnido() {
         return new Binding(QUEUE_LOGROS_PARCHE_UNIDO, Binding.DestinationType.QUEUE,
                 EXCHANGE_PARCHE_EVENTS, RK_PARCHE_MEMBER_JOINED, null);
+    }
+
+    @Bean
+    public Declarable bindingLogrosParcheCreado() {
+        return new Binding(QUEUE_LOGROS_PARCHE_CREADO, Binding.DestinationType.QUEUE,
+                EXCHANGE_PARCHE_EVENTS, RK_PARCHE_CREATED, null);
     }
 
     @Bean

@@ -18,10 +18,18 @@ public interface LogroUseCase {
     LogrosUsuario obtenerLogros(UUID usuarioId);
 
     /**
-     * Procesa una señal de actividad de parche (parche.member.joined) para
+     * Procesa una señal de "unirse a un parche" (parche.member.joined) para
      * el motor de reglas de logros.
      */
     void procesarActividadParche(UUID usuarioId, UUID parcheId, String categoria);
+
+    /**
+     * Procesa una señal de "crear un parche" (parche.created) para el motor
+     * de reglas de logros. Distinta de {@link #procesarActividadParche}
+     * porque algunos logros (Mona Coder, Mona Aire Libre) son "solo únete" y
+     * no deben otorgarse al crear.
+     */
+    void procesarParcheCreado(UUID usuarioId, UUID parcheId, String categoria);
 
     /**
      * Procesa una señal de actividad de evento (event.created o

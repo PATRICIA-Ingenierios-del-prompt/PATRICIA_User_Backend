@@ -40,12 +40,24 @@ public class LogroService implements LogroUseCase {
 
     private static final Logger log = LoggerFactory.getLogger(LogroService.class);
 
-    private static final Map<CategoriaActividad, List<LogroTipo>> PARCHE_A_LOGROS = Map.of(
+    // Reglas activadas al UNIRSE a un parche (parche.member.joined). Incluye
+    // TECHNOLOGY y SPORT, que son logros "solo únete" (no tienen mitad "crea").
+    private static final Map<CategoriaActividad, List<LogroTipo>> PARCHE_UNIRSE_A_LOGROS = Map.of(
             CategoriaActividad.TECHNOLOGY, List.of(LogroTipo.MONA_CODER),
             CategoriaActividad.MUSIC, List.of(LogroTipo.MONA_DJ, LogroTipo.MONA_MUSICA),
             CategoriaActividad.ENTERTAINMENT, List.of(LogroTipo.MONA_CULTURA, LogroTipo.MONA_GAMER),
             CategoriaActividad.ART, List.of(LogroTipo.MONA_ARTE),
             CategoriaActividad.SPORT, List.of(LogroTipo.MONA_AIRE_LIBRE),
+            CategoriaActividad.VARIETY, List.of(LogroTipo.MONA_FOODIE)
+    );
+
+    // Reglas activadas al CREAR un parche (parche.created). Deliberadamente
+    // NO incluye TECHNOLOGY (Mona Coder) ni SPORT (Mona Aire Libre): esos dos
+    // logros son "únete", no "crea o únete".
+    private static final Map<CategoriaActividad, List<LogroTipo>> PARCHE_CREAR_A_LOGROS = Map.of(
+            CategoriaActividad.MUSIC, List.of(LogroTipo.MONA_DJ, LogroTipo.MONA_MUSICA),
+            CategoriaActividad.ENTERTAINMENT, List.of(LogroTipo.MONA_CULTURA, LogroTipo.MONA_GAMER),
+            CategoriaActividad.ART, List.of(LogroTipo.MONA_ARTE),
             CategoriaActividad.VARIETY, List.of(LogroTipo.MONA_FOODIE)
     );
 
@@ -98,8 +110,22 @@ public class LogroService implements LogroUseCase {
 
     @Override
     public void procesarActividadParche(UUID usuarioId, UUID parcheId, String categoriaStr) {
+        procesarSenalParche(usuarioId, parcheId, categoriaStr, PARCHE_UNIRSE_A_LOGROS);
+    }
+
+    @Override
+    public void procesarParcheCreado(UUID usuarioId, UUID parcheId, String categoriaStr) {
+        procesarSenalParche(usuarioId, parcheId, categoriaStr, PARCHE_CREAR_A_LOGROS);
+    }
+
+    // Común a "únete" y "crea": el único cambio entre ambas señales es qué
+    // mapa de logros por-existencia se aplica (mapaLogros). El conteo de
+    // Estudiosa (STUDY) y la memoria de Tranquila (VARIETY) cuentan igual sin
+    // importar si el parche se creó o se unió, así que se evalúan siempre.
+    private void procesarSenalParche(UUID usuarioId, UUID parcheId, String categoriaStr,
+                                     Map<CategoriaActividad, List<LogroTipo>> mapaLogros) {
         CategoriaActividad.fromExterno(categoriaStr).ifPresent(categoria -> {
-            PARCHE_A_LOGROS.getOrDefault(categoria, List.of())
+            mapaLogros.getOrDefault(categoria, List.of())
                     .forEach(tipo -> otorgarSiNuevo(usuarioId, tipo));
 
             if (categoria == CategoriaActividad.STUDY) {
