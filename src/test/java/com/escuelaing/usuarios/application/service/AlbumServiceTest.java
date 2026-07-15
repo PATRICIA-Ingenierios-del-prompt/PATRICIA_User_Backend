@@ -6,6 +6,7 @@ import com.escuelaing.usuarios.domain.exception.MaxFotosException;
 import com.escuelaing.usuarios.domain.model.Foto;
 import com.escuelaing.usuarios.domain.port.outbound.FotoAlbumStoragePort;
 import com.escuelaing.usuarios.domain.port.outbound.FotoRepositoryPort;
+import com.escuelaing.usuarios.domain.port.outbound.PersonaDetectorPort;
 import com.escuelaing.usuarios.domain.port.outbound.UsuarioEventPublisherPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,12 +38,15 @@ class AlbumServiceTest {
     @Mock
     private UsuarioEventPublisherPort eventPublisher;
 
+    @Mock
+    private PersonaDetectorPort personaDetector;
+
     private AlbumService albumService;
     private UUID usuarioId;
 
     @BeforeEach
     void setUp() {
-        albumService = new AlbumService(fotoRepository, fotoStorage, eventPublisher);
+        albumService = new AlbumService(fotoRepository, fotoStorage, eventPublisher, personaDetector);
         usuarioId = UUID.randomUUID();
     }
 
