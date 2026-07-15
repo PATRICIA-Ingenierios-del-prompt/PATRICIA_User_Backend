@@ -11,6 +11,8 @@ import com.escuelaing.usuarios.domain.port.outbound.LogroEventPublisherPort;
 import com.escuelaing.usuarios.domain.port.outbound.LogroRepositoryPort;
 import com.escuelaing.usuarios.domain.port.outbound.LogroSenalRepositoryPort;
 import com.escuelaing.usuarios.domain.port.outbound.UsuarioRepositoryPort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,8 @@ import java.util.UUID;
 @Service
 @Transactional
 public class LogroService implements LogroUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(LogroService.class);
 
     private static final Map<CategoriaActividad, List<LogroTipo>> PARCHE_A_LOGROS = Map.of(
             CategoriaActividad.TECHNOLOGY, List.of(LogroTipo.MONA_CODER),
@@ -153,6 +157,8 @@ public class LogroService implements LogroUseCase {
     private void otorgarSiNuevo(UUID usuarioId, LogroTipo tipo) {
         if (logroRepository.otorgarSiNoExiste(usuarioId, tipo, tipo.getXp())) {
             int xpTotal = logroRepository.calcularXpTotal(usuarioId);
+            log.info("Logro: {} otorgado a usuario {} (+{} XP, total {})",
+                    tipo.name(), usuarioId, tipo.getXp(), xpTotal);
             eventPublisher.publicarLogroDesbloqueado(usuarioId, tipo, tipo.getXp(), xpTotal);
         }
     }

@@ -25,7 +25,8 @@ public class ParcheLogroConsumer {
 
     @RabbitListener(queues = RabbitMqConfig.QUEUE_LOGROS_PARCHE_UNIDO)
     public void onParcheMiembroUnido(ParcheMiembroUnidoMensaje mensaje) {
-        log.debug("Recibido parche.member.joined miembro={} parche={} category={}",
+        log.info("Logro: mensaje recibido de {} (RK {}) para usuario {} — parche={} category={}",
+                RabbitMqConfig.EXCHANGE_PARCHE_EVENTS, RabbitMqConfig.RK_PARCHE_MEMBER_JOINED,
                 mensaje.memberId(), mensaje.parcheId(), mensaje.category());
         logroUseCase.procesarActividadParche(mensaje.memberId(), mensaje.parcheId(), mensaje.category());
     }

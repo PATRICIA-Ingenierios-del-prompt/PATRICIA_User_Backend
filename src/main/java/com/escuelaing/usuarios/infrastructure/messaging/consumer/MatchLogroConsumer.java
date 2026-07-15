@@ -28,7 +28,9 @@ public class MatchLogroConsumer {
 
     @RabbitListener(queues = RabbitMqConfig.QUEUE_LOGROS_MATCH_CONFIRMADO)
     public void onMatchConfirmado(MatchConfirmadoEnvelopeMensaje mensaje) {
-        log.debug("Recibido match.confirmado usuario={} match={}", mensaje.usuarioId(), mensaje.payload().matchId());
+        log.info("Logro: mensaje recibido de {} (RK {}) para usuario {} — match={}",
+                RabbitMqConfig.EXCHANGE_MATCHING, RabbitMqConfig.RK_MATCH_CONFIRMADO,
+                mensaje.usuarioId(), mensaje.payload().matchId());
         logroUseCase.procesarMatchConfirmado(mensaje.usuarioId(), mensaje.payload().matchId());
     }
 }
