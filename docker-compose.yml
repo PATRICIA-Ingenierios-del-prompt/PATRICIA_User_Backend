@@ -77,5 +77,25 @@ services:
     ports:
       - "8082:8082"
 
+  # ── Módulo de detección de personas (Python / DeepFace) ───────────────────
+  person-detector:
+    build:
+      context: person-detector
+    container_name: person-detector
+    restart: unless-stopped
+    environment:
+      # URL interna del usuarios-service dentro de la red Docker
+      USUARIOS_SERVICE_URL: http://usuarios-service:8082
+      # Misma API key interna que usa el backend Java
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+      # Detector: retinaface (mejor precisión) | opencv | mtcnn | ssd
+      DETECTOR_BACKEND: ${DETECTOR_BACKEND:-retinaface}
+      # Umbral de confianza para considerar que hay una persona (0.0 – 1.0)
+      CONFIDENCE_THRESHOLD: ${CONFIDENCE_THRESHOLD:-0.75}
+    ports:
+      - "8090:8090"
+    depends_on:
+      - usuarios-service
+
 volumes:
   usuarios_postgres_data:
