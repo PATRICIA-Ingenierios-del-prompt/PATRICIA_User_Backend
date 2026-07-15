@@ -23,5 +23,7 @@ public record PerfilResponse(
         List<String> intereses,
         Disponibilidad disponibilidad,
         String urlFotoPerfil,
+        boolean tienePersonaEnFoto,
+        List<FranjaHorariaResponse> franjasDisponibilidad,
         boolean onboardingCompleto
 ) {}
