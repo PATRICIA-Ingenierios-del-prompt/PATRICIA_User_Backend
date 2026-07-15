@@ -1,8 +1,10 @@
 package com.escuelaing.usuarios.infrastructure.rest.controller;
 
+import com.escuelaing.usuarios.domain.model.EstadoUsuario;
 import com.escuelaing.usuarios.domain.model.Usuario;
 import com.escuelaing.usuarios.domain.port.in.UsuarioUseCase;
 import com.escuelaing.usuarios.infrastructure.rest.dto.request.ActualizarRolesRequest;
+import com.escuelaing.usuarios.infrastructure.rest.dto.response.EstadoCuentaResponse;
 import com.escuelaing.usuarios.infrastructure.rest.dto.response.UsuarioResponse;
 import com.escuelaing.usuarios.infrastructure.rest.mapper.UsuarioRestMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,6 +13,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -58,5 +61,14 @@ public class UsuarioController {
     public ResponseEntity<UsuarioResponse> cancelarCierreCuenta(@PathVariable UUID id) {
         Usuario actualizado = usuarioUseCase.cancelarCierreCuenta(id);
         return ResponseEntity.ok(mapper.toResponse(actualizado));
+    }
+
+    @GetMapping("/{id}/cuenta/estado")
+    @Operation(summary = "Consulta si la cuenta tiene una eliminación pendiente y desde cuándo, "
+            + "para poder mostrar el botón de recuperación sin depender del navegador donde se solicitó.")
+    public ResponseEntity<EstadoCuentaResponse> obtenerEstadoCuenta(@PathVariable UUID id) {
+        Usuario usuario = usuarioUseCase.buscarPorId(id);
+        boolean pendienteEliminacion = usuario.getEstado() == EstadoUsuario.PENDING_DELETION;
+        return ResponseEntity.ok(new EstadoCuentaResponse(pendienteEliminacion, usuario.getFechaSolicitudEliminacion()));
     }
 }

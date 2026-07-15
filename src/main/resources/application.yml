@@ -54,6 +54,10 @@ clients:
   llm-backend:
     url: ${LLM_BACKEND_URL:http://localhost:8083}
 
+# Sidecar Python de detección de personas (corre en localhost:8090 dentro del contenedor)
+person-detector:
+  url: ${PERSON_DETECTOR_URL:http://localhost:8090}
+
 
 aws:
   s3:

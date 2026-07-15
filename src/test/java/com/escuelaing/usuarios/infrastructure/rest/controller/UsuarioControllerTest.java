@@ -36,6 +36,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -211,5 +212,54 @@ class UsuarioControllerTest {
         mockMvc.perform(delete("/api/v1/usuarios/{id}/cuenta/cancelar", userId)
                         .header("Authorization", token(userId, List.of("STUDENT"))))
                 .andExpect(status().isConflict());
+    }
+
+    // ── obtenerEstadoCuenta ──────────────────────────────────────────────────
+
+    @Test
+    void obtenerEstadoCuenta_sinToken_retorna403() throws Exception {
+        mockMvc.perform(get("/api/v1/usuarios/{id}/cuenta/estado", UUID.randomUUID()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void obtenerEstadoCuenta_pendiente_retorna200ConFecha() throws Exception {
+        UUID userId = UUID.randomUUID();
+        Usuario usuario = Usuario.crearNuevo("test@mail.escuelaing.edu.co", "Carlos", null);
+        usuario.solicitarEliminacion();
+
+        when(usuarioUseCase.buscarPorId(userId)).thenReturn(usuario);
+
+        mockMvc.perform(get("/api/v1/usuarios/{id}/cuenta/estado", userId)
+                        .header("Authorization", token(userId, List.of("STUDENT"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pendienteEliminacion").value(true))
+                .andExpect(jsonPath("$.fechaSolicitudEliminacion").isNotEmpty());
+    }
+
+    @Test
+    void obtenerEstadoCuenta_noPendiente_retorna200SinFecha() throws Exception {
+        UUID userId = UUID.randomUUID();
+        Usuario usuario = Usuario.crearNuevo("test@mail.escuelaing.edu.co", "Carlos", null);
+
+        when(usuarioUseCase.buscarPorId(userId)).thenReturn(usuario);
+
+        mockMvc.perform(get("/api/v1/usuarios/{id}/cuenta/estado", userId)
+                        .header("Authorization", token(userId, List.of("STUDENT"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pendienteEliminacion").value(false))
+                .andExpect(jsonPath("$.fechaSolicitudEliminacion").doesNotExist());
+    }
+
+    @Test
+    void obtenerEstadoCuenta_usuarioNoExiste_retorna404() throws Exception {
+        UUID userId = UUID.randomUUID();
+
+        when(usuarioUseCase.buscarPorId(userId))
+                .thenThrow(new com.escuelaing.usuarios.domain.exception.UsuarioNoEncontradoException(userId));
+
+        mockMvc.perform(get("/api/v1/usuarios/{id}/cuenta/estado", userId)
+                        .header("Authorization", token(userId, List.of("STUDENT"))))
+                .andExpect(status().isNotFound());
     }
 }

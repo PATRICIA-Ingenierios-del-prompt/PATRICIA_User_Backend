@@ -9,6 +9,7 @@ import com.escuelaing.usuarios.domain.port.in.PerfilUseCase;
 import com.escuelaing.usuarios.domain.port.outbound.FotoAlbumStoragePort;
 import com.escuelaing.usuarios.domain.port.outbound.FotoPerfilStoragePort;
 import com.escuelaing.usuarios.domain.port.outbound.PerfilRepositoryPort;
+import com.escuelaing.usuarios.domain.port.outbound.PersonaDetectorPort;
 import com.escuelaing.usuarios.domain.port.outbound.UsuarioEventPublisherPort;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -48,15 +49,18 @@ public class PerfilService implements PerfilUseCase {
     private final UsuarioEventPublisherPort eventPublisher;
     private final FotoPerfilStoragePort fotoPerfilStorage;
     private final FotoAlbumStoragePort fotoAlbumStorage;
+    private final PersonaDetectorPort personaDetector;
 
     public PerfilService(PerfilRepositoryPort perfilRepository,
                          UsuarioEventPublisherPort eventPublisher,
                          FotoPerfilStoragePort fotoPerfilStorage,
-                         FotoAlbumStoragePort fotoAlbumStorage) {
+                         FotoAlbumStoragePort fotoAlbumStorage,
+                         PersonaDetectorPort personaDetector) {
         this.perfilRepository = perfilRepository;
         this.eventPublisher = eventPublisher;
         this.fotoPerfilStorage = fotoPerfilStorage;
         this.fotoAlbumStorage = fotoAlbumStorage;
+        this.personaDetector = personaDetector;
     }
 
     @Override
@@ -194,13 +198,20 @@ public class PerfilService implements PerfilUseCase {
 
         String url = fotoAlbumStorage.subirFotoAlbum(usuarioId, contenido, MIME_PERMITIDOS.get(mimeNorm));
         perfil.actualizarUrlFotoPerfil(url);
-        // Al reemplazar foto, el flag de persona se reinicia
-        if (perfil.isTienePersonaEnFoto()) {
-            perfil.marcarPersonaDetectadaEnFoto(); // ya está en true → no hace nada
-        }
+        // Resetear el flag: la foto cambió, se re-verifica
+        perfil.resetearPersonaEnFoto();
 
         Perfil guardado = perfilRepository.guardar(perfil);
         eventPublisher.publicarPerfilActualizado(usuarioId, List.of("urlFotoPerfil"));
+
+        // Detección automática: llamar al sidecar Python en localhost:8090
+        boolean tienePersona = personaDetector.tienPersona(url);
+        if (tienePersona) {
+            guardado.marcarPersonaDetectadaEnFoto();
+            perfilRepository.guardar(guardado);
+            eventPublisher.publicarPersonaDetectadaEnFoto(usuarioId, guardado.getId());
+        }
+
         return guardado;
     }
 
