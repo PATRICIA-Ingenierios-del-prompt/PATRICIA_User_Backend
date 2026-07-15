@@ -2,14 +2,14 @@ package com.escuelaing.usuarios.infrastructure.persistence.mapper;
 
 import com.escuelaing.usuarios.domain.model.Usuario;
 import com.escuelaing.usuarios.infrastructure.persistence.entity.UsuarioEntity;
-import org.mapstruct.Mapper;
+import org.springframework.stereotype.Component;
 
 /**
  * Traduce entre el modelo de dominio Usuario y la entidad de persistencia
  * UsuarioEntity. Vive en infraestructura: el dominio no conoce JPA.
  */
-@Mapper(componentModel = "spring")
-public abstract class UsuarioEntityMapper {
+@Component
+public class UsuarioEntityMapper {
 
     public Usuario toDomain(UsuarioEntity entity) {
         if (entity == null) {

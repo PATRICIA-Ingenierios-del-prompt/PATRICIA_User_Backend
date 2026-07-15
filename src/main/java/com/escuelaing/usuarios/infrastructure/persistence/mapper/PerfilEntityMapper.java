@@ -4,7 +4,7 @@ import com.escuelaing.usuarios.domain.model.FranjaHoraria;
 import com.escuelaing.usuarios.domain.model.Perfil;
 import com.escuelaing.usuarios.infrastructure.persistence.entity.FranjaHorariaEntity;
 import com.escuelaing.usuarios.infrastructure.persistence.entity.PerfilEntity;
-import org.mapstruct.Mapper;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,8 +14,8 @@ import java.util.stream.Collectors;
  * Traduce entre el modelo de dominio Perfil y la entidad de persistencia
  * PerfilEntity.
  */
-@Mapper(componentModel = "spring")
-public abstract class PerfilEntityMapper {
+@Component
+public class PerfilEntityMapper {
 
     public Perfil toDomain(PerfilEntity entity) {
         if (entity == null) return null;

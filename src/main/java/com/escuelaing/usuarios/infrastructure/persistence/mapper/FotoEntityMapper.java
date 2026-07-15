@@ -2,14 +2,14 @@ package com.escuelaing.usuarios.infrastructure.persistence.mapper;
 
 import com.escuelaing.usuarios.domain.model.Foto;
 import com.escuelaing.usuarios.infrastructure.persistence.entity.FotoEntity;
-import org.mapstruct.Mapper;
+import org.springframework.stereotype.Component;
 
 /**
  * Traduce entre el modelo de dominio Foto y la entidad de persistencia
  * FotoEntity.
  */
-@Mapper(componentModel = "spring")
-public abstract class FotoEntityMapper {
+@Component
+public class FotoEntityMapper {
 
     public Foto toDomain(FotoEntity entity) {
         if (entity == null) {
