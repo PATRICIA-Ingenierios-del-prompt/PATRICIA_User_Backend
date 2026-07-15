@@ -2,6 +2,8 @@ package com.escuelaing.usuarios.infrastructure.persistence.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -33,6 +35,7 @@ public class FranjaHorariaEntity {
     @Column(name = "perfil_id", nullable = false)
     private UUID perfilId;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "dia_semana", nullable = false, length = 15)
     private DayOfWeek diaSemana;
 
