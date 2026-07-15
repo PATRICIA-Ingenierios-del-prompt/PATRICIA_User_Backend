@@ -5,6 +5,7 @@ import com.escuelaing.usuarios.domain.exception.PerfilNoEncontradoException;
 import com.escuelaing.usuarios.domain.model.Disponibilidad;
 import com.escuelaing.usuarios.domain.model.Genero;
 import com.escuelaing.usuarios.domain.model.Perfil;
+import com.escuelaing.usuarios.domain.port.outbound.FotoAlbumStoragePort;
 import com.escuelaing.usuarios.domain.port.outbound.FotoPerfilStoragePort;
 import com.escuelaing.usuarios.domain.port.outbound.PerfilRepositoryPort;
 import com.escuelaing.usuarios.domain.port.outbound.UsuarioEventPublisherPort;
@@ -30,22 +31,18 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class PerfilServiceTest {
 
-    @Mock
-    private PerfilRepositoryPort perfilRepository;
-
-    @Mock
-    private UsuarioEventPublisherPort eventPublisher;
-
-    @Mock
-    private FotoPerfilStoragePort fotoPerfilStorage;
+    @Mock private PerfilRepositoryPort perfilRepository;
+    @Mock private UsuarioEventPublisherPort eventPublisher;
+    @Mock private FotoPerfilStoragePort fotoPerfilStorage;
+    @Mock private FotoAlbumStoragePort fotoAlbumStorage;
 
     private PerfilService perfilService;
-
     private UUID usuarioId;
 
     @BeforeEach
     void setUp() {
-        perfilService = new PerfilService(perfilRepository, eventPublisher, fotoPerfilStorage);
+        perfilService = new PerfilService(perfilRepository, eventPublisher,
+                fotoPerfilStorage, fotoAlbumStorage);
         usuarioId = UUID.randomUUID();
     }
 
@@ -279,5 +276,170 @@ class PerfilServiceTest {
 
         perfilService.buscarUsuarios("ana", usuarioId, -3);
         verify(perfilRepository).buscarPorNombreOCarrera("ana", usuarioId, 1);
+    }
+
+    // ── actualizarFotoPerfil (bytes) ──────────────────────────────────────────
+
+    @Test
+    void actualizarFotoPerfil_perfilNoExiste_lanzaPerfilNoEncontradoException() {
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> perfilService.actualizarFotoPerfil(
+                usuarioId, new byte[]{1, 2}, "image/jpeg"))
+                .isInstanceOf(PerfilNoEncontradoException.class);
+    }
+
+    @Test
+    void actualizarFotoPerfil_mimeNoSoportado_lanzaDominioInvalido() {
+        assertThatThrownBy(() -> perfilService.actualizarFotoPerfil(
+                usuarioId, new byte[]{1}, "image/gif"))
+                .isInstanceOf(com.escuelaing.usuarios.domain.exception.DominioInvalidoException.class);
+    }
+
+    @Test
+    void actualizarFotoPerfil_valido_subeYPersistUrlYPublicaEvento() {
+        Perfil perfil = Perfil.crearVacio(usuarioId);
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.of(perfil));
+        when(fotoAlbumStorage.subirFotoAlbum(any(), any(), any())).thenReturn("https://s3/nueva.jpg");
+        when(perfilRepository.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Perfil resultado = perfilService.actualizarFotoPerfil(
+                usuarioId, new byte[]{(byte) 0xFF, (byte) 0xD8}, "image/jpeg");
+
+        assertThat(resultado.getUrlFotoPerfil()).isEqualTo("https://s3/nueva.jpg");
+        verify(fotoAlbumStorage).subirFotoAlbum(eq(usuarioId), any(), eq("image/jpeg"));
+        verify(perfilRepository).guardar(perfil);
+        verify(eventPublisher).publicarPerfilActualizado(usuarioId, List.of("urlFotoPerfil"));
+    }
+
+    // ── actualizarFotoPerfilDesdeDataUrl ──────────────────────────────────────
+
+    @Test
+    void actualizarFotoPerfilDesdeDataUrl_formatoInvalido_lanzaDominioInvalido() {
+        assertThatThrownBy(() -> perfilService.actualizarFotoPerfilDesdeDataUrl(
+                usuarioId, "no-es-data-url"))
+                .isInstanceOf(com.escuelaing.usuarios.domain.exception.DominioInvalidoException.class);
+    }
+
+    @Test
+    void actualizarFotoPerfilDesdeDataUrl_base64Invalido_lanzaDominioInvalido() {
+        assertThatThrownBy(() -> perfilService.actualizarFotoPerfilDesdeDataUrl(
+                usuarioId, "data:image/jpeg;base64,!!!no-valido!!!"))
+                .isInstanceOf(com.escuelaing.usuarios.domain.exception.DominioInvalidoException.class);
+    }
+
+    @Test
+    void actualizarFotoPerfilDesdeDataUrl_valido_subeYPersiste() {
+        Perfil perfil = Perfil.crearVacio(usuarioId);
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.of(perfil));
+        when(fotoAlbumStorage.subirFotoAlbum(any(), any(), any())).thenReturn("https://s3/foto.png");
+        when(perfilRepository.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        // "AAAA" es base64 válido (3 bytes)
+        Perfil resultado = perfilService.actualizarFotoPerfilDesdeDataUrl(
+                usuarioId, "data:image/png;base64,AAAA");
+
+        assertThat(resultado.getUrlFotoPerfil()).isEqualTo("https://s3/foto.png");
+        verify(fotoAlbumStorage).subirFotoAlbum(eq(usuarioId), any(byte[].class), eq("image/png"));
+    }
+
+    // ── marcarPersonaEnFotoPerfil ─────────────────────────────────────────────
+
+    @Test
+    void marcarPersonaEnFotoPerfil_perfilNoExiste_lanzaPerfilNoEncontradoException() {
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> perfilService.marcarPersonaEnFotoPerfil(usuarioId))
+                .isInstanceOf(PerfilNoEncontradoException.class);
+    }
+
+    @Test
+    void marcarPersonaEnFotoPerfil_cambiaDefalseATrue_persisteYPublicaEvento() {
+        Perfil perfil = Perfil.crearVacio(usuarioId);
+        assertThat(perfil.isTienePersonaEnFoto()).isFalse();
+
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.of(perfil));
+        when(perfilRepository.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Perfil resultado = perfilService.marcarPersonaEnFotoPerfil(usuarioId);
+
+        assertThat(resultado.isTienePersonaEnFoto()).isTrue();
+        verify(perfilRepository).guardar(perfil);
+        verify(eventPublisher).publicarPersonaDetectadaEnFoto(eq(usuarioId), any());
+    }
+
+    @Test
+    void marcarPersonaEnFotoPerfil_yaEstaMarcada_noVuelveAPublicarEvento() {
+        Perfil perfil = Perfil.crearVacio(usuarioId);
+        perfil.marcarPersonaDetectadaEnFoto(); // lo marcamos manualmente
+        assertThat(perfil.isTienePersonaEnFoto()).isTrue();
+
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.of(perfil));
+        when(perfilRepository.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        perfilService.marcarPersonaEnFotoPerfil(usuarioId);
+
+        // Ya estaba true → no debe volver a publicar
+        verify(eventPublisher, never()).publicarPersonaDetectadaEnFoto(any(), any());
+        // Pero sí guarda
+        verify(perfilRepository).guardar(perfil);
+    }
+
+    // ── actualizarFranjasDisponibilidad ───────────────────────────────────────
+
+    @Test
+    void actualizarFranjasDisponibilidad_perfilNoExiste_lanzaPerfilNoEncontradoException() {
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> perfilService.actualizarFranjasDisponibilidad(
+                usuarioId, List.of()))
+                .isInstanceOf(PerfilNoEncontradoException.class);
+    }
+
+    @Test
+    void actualizarFranjasDisponibilidad_listaVacia_limpiaTodas() {
+        Perfil perfil = Perfil.crearVacio(usuarioId);
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.of(perfil));
+        when(perfilRepository.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        Perfil resultado = perfilService.actualizarFranjasDisponibilidad(usuarioId, List.of());
+
+        assertThat(resultado.getFranjasDisponibilidad()).isEmpty();
+        verify(perfilRepository).guardar(perfil);
+        verify(eventPublisher).publicarPerfilActualizado(usuarioId, List.of("franjasDisponibilidad"));
+    }
+
+    @Test
+    void actualizarFranjasDisponibilidad_conFranjas_persisteYPublicaEvento() {
+        Perfil perfil = Perfil.crearVacio(usuarioId);
+        UUID perfilId = perfil.getId();
+        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.of(perfil));
+        when(perfilRepository.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        List<com.escuelaing.usuarios.domain.model.FranjaHoraria> franjas = List.of(
+                com.escuelaing.usuarios.domain.model.FranjaHoraria.crear(
+                        perfilId, java.time.DayOfWeek.MONDAY,
+                        java.time.LocalTime.of(8, 0), java.time.LocalTime.of(10, 0)),
+                com.escuelaing.usuarios.domain.model.FranjaHoraria.crear(
+                        perfilId, java.time.DayOfWeek.WEDNESDAY,
+                        java.time.LocalTime.of(14, 0), java.time.LocalTime.of(16, 0))
+        );
+
+        Perfil resultado = perfilService.actualizarFranjasDisponibilidad(usuarioId, franjas);
+
+        assertThat(resultado.getFranjasDisponibilidad()).hasSize(2);
+        verify(eventPublisher).publicarPerfilActualizado(usuarioId, List.of("franjasDisponibilidad"));
+    }
+
+    @Test
+    void actualizarFranjasDisponibilidad_franjaConHoraInicioMayorAFin_lanzaDominioInvalido() {
+        Perfil perfil = Perfil.crearVacio(usuarioId);
+
+        assertThatThrownBy(() -> perfilService.actualizarFranjasDisponibilidad(
+                usuarioId, List.of(
+                        com.escuelaing.usuarios.domain.model.FranjaHoraria.crear(
+                                perfil.getId(), java.time.DayOfWeek.FRIDAY,
+                                java.time.LocalTime.of(18, 0), java.time.LocalTime.of(8, 0)))))
+                .isInstanceOf(com.escuelaing.usuarios.domain.exception.DominioInvalidoException.class);
     }
 }

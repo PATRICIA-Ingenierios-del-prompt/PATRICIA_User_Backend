@@ -1,6 +1,7 @@
 package com.escuelaing.usuarios.domain.port.in;
 
 import com.escuelaing.usuarios.domain.model.Disponibilidad;
+import com.escuelaing.usuarios.domain.model.FranjaHoraria;
 import com.escuelaing.usuarios.domain.model.Genero;
 import com.escuelaing.usuarios.domain.model.Perfil;
 
@@ -32,6 +33,28 @@ public interface PerfilUseCase {
     List<String> obtenerIntereses(UUID usuarioId);
 
     List<String> actualizarIntereses(UUID usuarioId, List<String> intereses);
+
+    /**
+     * Sube o reemplaza la foto de perfil desde bytes (multipart).
+     * Marca tienePersonaEnFoto = false al reemplazar (la detección es nueva).
+     */
+    Perfil actualizarFotoPerfil(UUID usuarioId, byte[] contenido, String contentType);
+
+    /**
+     * Sube o reemplaza la foto de perfil desde un data-URL base64.
+     */
+    Perfil actualizarFotoPerfilDesdeDataUrl(UUID usuarioId, String dataUrl);
+
+    /**
+     * Marca la foto de perfil como "con persona detectada" y publica el
+     * evento album.foto.persona.detectada si el valor cambia.
+     */
+    Perfil marcarPersonaEnFotoPerfil(UUID usuarioId);
+
+    /**
+     * Reemplaza completamente las franjas de disponibilidad horaria del usuario.
+     */
+    Perfil actualizarFranjasDisponibilidad(UUID usuarioId, List<FranjaHoraria> franjas);
 
     /**
      * Devuelve perfiles elegibles para matching: usuarios con
