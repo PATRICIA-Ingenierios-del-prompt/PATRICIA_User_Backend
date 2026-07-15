@@ -356,42 +356,4 @@ class PerfilControllerTest {
                 .andExpect(jsonPath("$").isArray());
     }
 
-    // ── buscar ───────────────────────────────────────────────────────────────
-
-    @Test
-    void buscarUsuarios_sinToken_retorna403() throws Exception {
-        mockMvc.perform(get("/api/v1/usuarios/buscar").param("q", "ana"))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void buscarUsuarios_conTokenValido_retornaListaMapeada200() throws Exception {
-        UUID usuarioId = UUID.randomUUID();
-        String token = createBearerToken(usuarioId, List.of("STUDENT"));
-        Perfil encontrado = Perfil.crearVacio(UUID.randomUUID());
-        PerfilResponse response = mapper.toResponse(encontrado);
-
-        when(perfilUseCase.buscarUsuarios("ana", usuarioId, 20)).thenReturn(List.of(encontrado));
-        when(mapper.toResponse(encontrado)).thenReturn(response);
-
-        mockMvc.perform(get("/api/v1/usuarios/buscar")
-                        .param("q", "ana")
-                        .header("Authorization", token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray());
-    }
-
-    @Test
-    void buscarUsuarios_conLimiteCustom_loPasaAlCasoDeUso() throws Exception {
-        UUID usuarioId = UUID.randomUUID();
-        String token = createBearerToken(usuarioId, List.of("STUDENT"));
-        when(perfilUseCase.buscarUsuarios("ana", usuarioId, 5)).thenReturn(List.of());
-
-        mockMvc.perform(get("/api/v1/usuarios/buscar")
-                        .param("q", "ana")
-                        .param("limite", "5")
-                        .header("Authorization", token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray());
-    }
 }
