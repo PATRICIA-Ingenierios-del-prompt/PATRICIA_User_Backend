@@ -28,14 +28,16 @@ public class EventoLogroConsumer {
 
     @RabbitListener(queues = RabbitMqConfig.QUEUE_LOGROS_EVENTO_CREADO)
     public void onEventoCreado(EventoCreadoMensaje mensaje) {
-        log.debug("Recibido event.created usuario={} evento={} categoria={}",
+        log.info("Logro: mensaje recibido de {} (RK {}) para usuario {} — evento={} categoria={}",
+                RabbitMqConfig.EXCHANGE_EVENT_EVENTS, RabbitMqConfig.RK_EVENT_CREATED,
                 mensaje.usuarioId(), mensaje.eventoId(), mensaje.categoria());
         logroUseCase.procesarActividadEvento(mensaje.usuarioId(), mensaje.eventoId(), mensaje.categoria());
     }
 
     @RabbitListener(queues = RabbitMqConfig.QUEUE_LOGROS_EVENTO_PARTICIPANTE)
     public void onEventoParticipanteUnido(EventoParticipanteUnidoMensaje mensaje) {
-        log.debug("Recibido event.participant.joined usuario={} evento={} categoria={}",
+        log.info("Logro: mensaje recibido de {} (RK {}) para usuario {} — evento={} categoria={}",
+                RabbitMqConfig.EXCHANGE_EVENT_EVENTS, RabbitMqConfig.RK_EVENT_PARTICIPANT_JOINED,
                 mensaje.usuarioId(), mensaje.eventoId(), mensaje.categoria());
         logroUseCase.procesarActividadEvento(mensaje.usuarioId(), mensaje.eventoId(), mensaje.categoria());
     }
