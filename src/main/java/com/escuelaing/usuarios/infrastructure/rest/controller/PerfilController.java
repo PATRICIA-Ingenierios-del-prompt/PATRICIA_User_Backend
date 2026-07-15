@@ -16,6 +16,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -139,5 +141,26 @@ public class PerfilController {
     public ResponseEntity<List<String>> actualizarIntereses(@PathVariable UUID id,
                                                             @Valid @RequestBody ActualizarInteresesRequest request) {
         return ResponseEntity.ok(perfilUseCase.actualizarIntereses(id, request.intereses()));
+    }
+
+    @GetMapping("/buscar")
+    @Operation(summary = "Busca usuarios por nombre, apellidos o carrera, entre todos los usuarios "
+            + "ACTIVE de la plataforma (no limitado a sugerencias de matching). Excluye al usuario "
+            + "autenticado de sus propios resultados.")
+    public ResponseEntity<List<PerfilResponse>> buscarUsuarios(
+            @RequestParam("q") String query,
+            @RequestParam(defaultValue = "20") int limite,
+            Authentication auth) {
+        UUID usuarioId = usuarioIdAutenticado(auth);
+        List<Perfil> resultados = perfilUseCase.buscarUsuarios(query, usuarioId, limite);
+        List<PerfilResponse> respuesta = resultados.stream().map(mapper::toResponse).toList();
+        return ResponseEntity.ok(respuesta);
+    }
+
+    private UUID usuarioIdAutenticado(Authentication auth) {
+        if (auth == null || !(auth.getPrincipal() instanceof UUID uuid)) {
+            throw new AccessDeniedException("No se pudo determinar el usuario autenticado");
+        }
+        return uuid;
     }
 }

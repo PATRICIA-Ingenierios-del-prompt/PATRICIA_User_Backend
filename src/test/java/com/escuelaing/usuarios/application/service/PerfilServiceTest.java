@@ -335,7 +335,6 @@ class PerfilServiceTest {
         when(fotoAlbumStorage.subirFotoAlbum(any(), any(), any())).thenReturn("https://s3/foto.png");
         when(perfilRepository.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        // "AAAA" es base64 válido (3 bytes)
         Perfil resultado = perfilService.actualizarFotoPerfilDesdeDataUrl(
                 usuarioId, "data:image/png;base64,AAAA");
 
@@ -371,7 +370,7 @@ class PerfilServiceTest {
     @Test
     void marcarPersonaEnFotoPerfil_yaEstaMarcada_noVuelveAPublicarEvento() {
         Perfil perfil = Perfil.crearVacio(usuarioId);
-        perfil.marcarPersonaDetectadaEnFoto(); // lo marcamos manualmente
+        perfil.marcarPersonaDetectadaEnFoto();
         assertThat(perfil.isTienePersonaEnFoto()).isTrue();
 
         when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.of(perfil));
@@ -379,9 +378,7 @@ class PerfilServiceTest {
 
         perfilService.marcarPersonaEnFotoPerfil(usuarioId);
 
-        // Ya estaba true → no debe volver a publicar
         verify(eventPublisher, never()).publicarPersonaDetectadaEnFoto(any(), any());
-        // Pero sí guarda
         verify(perfilRepository).guardar(perfil);
     }
 
