@@ -36,6 +36,9 @@ public class Perfil {
     private List<String> intereses;
     private Disponibilidad disponibilidad;
     private String urlFotoPerfil;
+    /** Indica si se detectó una persona en la foto de perfil. */
+    private boolean tienePersonaEnFoto;
+    private List<FranjaHoraria> franjasDisponibilidad;
     private boolean onboardingCompleto;
     private Instant fechaActualizacion;
 
@@ -46,6 +49,7 @@ public class Perfil {
     private Perfil(UUID id, UUID usuarioId, String nombre, String apellidos, String bio, String carrera,
                    String segundaCarrera, Integer semestre, LocalDate fechaNacimiento, Genero genero,
                    List<String> intereses, Disponibilidad disponibilidad, String urlFotoPerfil,
+                   boolean tienePersonaEnFoto, List<FranjaHoraria> franjasDisponibilidad,
                    boolean onboardingCompleto, Instant fechaActualizacion) {
         this.id = id;
         this.usuarioId = usuarioId;
@@ -60,6 +64,8 @@ public class Perfil {
         this.intereses = intereses;
         this.disponibilidad = disponibilidad;
         this.urlFotoPerfil = urlFotoPerfil;
+        this.tienePersonaEnFoto = tienePersonaEnFoto;
+        this.franjasDisponibilidad = franjasDisponibilidad != null ? new ArrayList<>(franjasDisponibilidad) : new ArrayList<>();
         this.onboardingCompleto = onboardingCompleto;
         this.fechaActualizacion = fechaActualizacion;
     }
@@ -67,7 +73,7 @@ public class Perfil {
     public static Perfil crearVacio(UUID usuarioId) {
         Objects.requireNonNull(usuarioId, "usuarioId no puede ser nulo");
         return new Perfil(UUID.randomUUID(), usuarioId, null, null, null, null, null, null, null, null,
-                new ArrayList<>(), Disponibilidad.DISPONIBLE, null, false, Instant.now());
+                new ArrayList<>(), Disponibilidad.DISPONIBLE, null, false, new ArrayList<>(), false, Instant.now());
     }
 
     public static Perfil reconstruir(UUID id, UUID usuarioId, String nombre, String apellidos, String bio,
@@ -78,7 +84,20 @@ public class Perfil {
         return new Perfil(id, usuarioId, nombre, apellidos, bio, carrera, segundaCarrera, semestre,
                 fechaNacimiento, genero,
                 intereses == null ? new ArrayList<>() : new ArrayList<>(intereses),
-                disponibilidad, urlFotoPerfil, onboardingCompleto, fechaActualizacion);
+                disponibilidad, urlFotoPerfil, false, new ArrayList<>(), onboardingCompleto, fechaActualizacion);
+    }
+
+    public static Perfil reconstruir(UUID id, UUID usuarioId, String nombre, String apellidos, String bio,
+                                     String carrera, String segundaCarrera, Integer semestre,
+                                     LocalDate fechaNacimiento, Genero genero, List<String> intereses,
+                                     Disponibilidad disponibilidad, String urlFotoPerfil,
+                                     boolean tienePersonaEnFoto, List<FranjaHoraria> franjasDisponibilidad,
+                                     boolean onboardingCompleto, Instant fechaActualizacion) {
+        return new Perfil(id, usuarioId, nombre, apellidos, bio, carrera, segundaCarrera, semestre,
+                fechaNacimiento, genero,
+                intereses == null ? new ArrayList<>() : new ArrayList<>(intereses),
+                disponibilidad, urlFotoPerfil, tienePersonaEnFoto, franjasDisponibilidad,
+                onboardingCompleto, fechaActualizacion);
     }
 
     /**
@@ -205,6 +224,26 @@ public class Perfil {
         this.fechaActualizacion = Instant.now();
     }
 
+    /**
+     * Marca la foto de perfil como "con persona detectada".
+     * @return true si el campo cambió (era false), false si ya estaba activo.
+     */
+    public boolean marcarPersonaDetectadaEnFoto() {
+        if (this.tienePersonaEnFoto) return false;
+        this.tienePersonaEnFoto = true;
+        this.fechaActualizacion = Instant.now();
+        return true;
+    }
+
+    /**
+     * Reemplaza completamente las franjas de disponibilidad horaria.
+     * Una lista vacía significa "sin franjas declaradas".
+     */
+    public void actualizarFranjasDisponibilidad(List<FranjaHoraria> nuevasFranjas) {
+        this.franjasDisponibilidad = nuevasFranjas == null ? new ArrayList<>() : new ArrayList<>(nuevasFranjas);
+        this.fechaActualizacion = Instant.now();
+    }
+
     private void validarIntereses(List<String> intereses) {
         for (String interes : intereses) {
             if (!Interes.existe(interes)) {
@@ -269,6 +308,14 @@ public class Perfil {
 
     public String getUrlFotoPerfil() {
         return urlFotoPerfil;
+    }
+
+    public boolean isTienePersonaEnFoto() {
+        return tienePersonaEnFoto;
+    }
+
+    public List<FranjaHoraria> getFranjasDisponibilidad() {
+        return List.copyOf(franjasDisponibilidad);
     }
 
     public Instant getFechaActualizacion() {
