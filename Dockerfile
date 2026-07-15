@@ -50,12 +50,9 @@ FROM eclipse-temurin:21-jre-jammy
 
 # Instalar Python 3.11, pip, supervisord y librerías de visión
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3.11 python3-pip python3.11-distutils \
+        python3.11 python3-pip python3.11-distutils libpython3.11 \
         supervisor \
         libgl1 libglib2.0-0 libsm6 libxrender1 libxext6 \
-    && rm -rf /var/lib/apt/lists/* \
-    && ln -sf /usr/bin/python3.11 /usr/bin/python3 \
-    && ln -sf /usr/bin/python3    /usr/bin/python
 
 WORKDIR /app
 
