@@ -47,10 +47,13 @@ services:
       timeout: 5s
       retries: 10
 
+  # El detector Python (DeepFace) corre DENTRO del mismo contenedor
+  # usando supervisord. Solo se expone el puerto 8082 hacia afuera;
+  # el detector escucha en localhost:8090 (invisible desde fuera).
   usuarios-service:
     build:
-      context: usuarios-service
-      dockerfile: usuarios-service/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     container_name: usuarios-service
     restart: unless-stopped
     depends_on:
@@ -74,8 +77,12 @@ services:
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
       MAX_REPORTES_SUSPENSION: ${MAX_REPORTES_SUSPENSION:-5}
       AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-http://auth-service:8081}
+      # Variables para el detector Python embebido
+      DETECTOR_BACKEND: ${DETECTOR_BACKEND:-retinaface}
+      CONFIDENCE_THRESHOLD: ${CONFIDENCE_THRESHOLD:-0.75}
     ports:
       - "8082:8082"
+      # Puerto 8090 (detector) NO se expone: solo accesible internamente en localhost
 
 volumes:
   usuarios_postgres_data:

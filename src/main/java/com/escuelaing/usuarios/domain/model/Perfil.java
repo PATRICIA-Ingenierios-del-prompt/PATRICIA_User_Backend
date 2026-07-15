@@ -236,6 +236,15 @@ public class Perfil {
     }
 
     /**
+     * Resetea el flag de persona detectada. Se llama cuando se reemplaza la foto
+     * de perfil, para que la nueva foto sea re-verificada.
+     */
+    public void resetearPersonaEnFoto() {
+        this.tienePersonaEnFoto = false;
+        this.fechaActualizacion = Instant.now();
+    }
+
+    /**
      * Reemplaza completamente las franjas de disponibilidad horaria.
      * Una lista vacía significa "sin franjas declaradas".
      */
