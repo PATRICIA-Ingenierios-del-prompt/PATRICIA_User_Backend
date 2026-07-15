@@ -8,6 +8,7 @@ import com.escuelaing.usuarios.domain.model.Foto;
 import com.escuelaing.usuarios.domain.port.in.AlbumUseCase;
 import com.escuelaing.usuarios.domain.port.outbound.FotoAlbumStoragePort;
 import com.escuelaing.usuarios.domain.port.outbound.FotoRepositoryPort;
+import com.escuelaing.usuarios.domain.port.outbound.PersonaDetectorPort;
 import com.escuelaing.usuarios.domain.port.outbound.UsuarioEventPublisherPort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,13 +48,16 @@ public class AlbumService implements AlbumUseCase {
     private final FotoRepositoryPort fotoRepository;
     private final FotoAlbumStoragePort fotoStorage;
     private final UsuarioEventPublisherPort eventPublisher;
+    private final PersonaDetectorPort personaDetector;
 
     public AlbumService(FotoRepositoryPort fotoRepository,
                         FotoAlbumStoragePort fotoStorage,
-                        UsuarioEventPublisherPort eventPublisher) {
+                        UsuarioEventPublisherPort eventPublisher,
+                        PersonaDetectorPort personaDetector) {
         this.fotoRepository = fotoRepository;
         this.fotoStorage = fotoStorage;
         this.eventPublisher = eventPublisher;
+        this.personaDetector = personaDetector;
     }
 
     @Override
@@ -117,6 +121,14 @@ public class AlbumService implements AlbumUseCase {
         Foto guardada = fotoRepository.guardar(nueva);
 
         eventPublisher.publicarFotoAgregada(album.getUsuarioId(), guardada.getId(), guardada.getOrden());
+
+        // Detección automática: llamar al sidecar Python en localhost:8090
+        boolean tienePersona = personaDetector.tienPersona(urlFoto);
+        if (tienePersona) {
+            guardada.marcarPersonaDetectada();
+            fotoRepository.guardar(guardada);
+            eventPublisher.publicarPersonaDetectadaEnFoto(album.getUsuarioId(), guardada.getId());
+        }
 
         return guardada;
     }

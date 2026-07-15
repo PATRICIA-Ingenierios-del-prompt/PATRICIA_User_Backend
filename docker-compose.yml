@@ -47,10 +47,13 @@ services:
       timeout: 5s
       retries: 10
 
+  # El detector Python (DeepFace) corre DENTRO del mismo contenedor
+  # usando supervisord. Solo se expone el puerto 8082 hacia afuera;
+  # el detector escucha en localhost:8090 (invisible desde fuera).
   usuarios-service:
     build:
-      context: usuarios-service
-      dockerfile: usuarios-service/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     container_name: usuarios-service
     restart: unless-stopped
     depends_on:
@@ -74,28 +77,12 @@ services:
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
       MAX_REPORTES_SUSPENSION: ${MAX_REPORTES_SUSPENSION:-5}
       AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-http://auth-service:8081}
-    ports:
-      - "8082:8082"
-
-  # ── Módulo de detección de personas (Python / DeepFace) ───────────────────
-  person-detector:
-    build:
-      context: person-detector
-    container_name: person-detector
-    restart: unless-stopped
-    environment:
-      # URL interna del usuarios-service dentro de la red Docker
-      USUARIOS_SERVICE_URL: http://usuarios-service:8082
-      # Misma API key interna que usa el backend Java
-      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
-      # Detector: retinaface (mejor precisión) | opencv | mtcnn | ssd
+      # Variables para el detector Python embebido
       DETECTOR_BACKEND: ${DETECTOR_BACKEND:-retinaface}
-      # Umbral de confianza para considerar que hay una persona (0.0 – 1.0)
       CONFIDENCE_THRESHOLD: ${CONFIDENCE_THRESHOLD:-0.75}
     ports:
-      - "8090:8090"
-    depends_on:
-      - usuarios-service
+      - "8082:8082"
+      # Puerto 8090 (detector) NO se expone: solo accesible internamente en localhost
 
 volumes:
   usuarios_postgres_data:
