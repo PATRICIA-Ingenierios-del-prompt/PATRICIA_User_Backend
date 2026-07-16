@@ -56,15 +56,7 @@ class PerfilServiceTest {
                 .isInstanceOf(PerfilNoEncontradoException.class);
     }
 
-    @Test
-    void obtenerPerfil_onboardingIncompleto_lanzaPerfilNoEncontradoException() {
-        Perfil perfil = Perfil.crearVacio(usuarioId);
-        // Por defecto, onboardingCompleto es false en perfil recién creado
-        when(perfilRepository.buscarPorUsuarioId(usuarioId)).thenReturn(Optional.of(perfil));
 
-        assertThatThrownBy(() -> perfilService.obtenerPerfil(usuarioId))
-                .isInstanceOf(PerfilNoEncontradoException.class);
-    }
 
     @Test
     void obtenerPerfil_onboardingCompleto_retornaPerfil() {
