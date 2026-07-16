@@ -176,6 +176,15 @@
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
         </dependency>
+        <!-- Requerido por WebIdentityTokenCredentialsProvider (IRSA en EKS):
+             sin este módulo en el classpath, el SDK no puede intercambiar el
+             token de identidad web por credenciales vía STS, y la cadena de
+             credenciales falla completa (confirmado en logs de producción:
+             "the 'sts' service module must be on the class path"). -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sts</artifactId>
+        </dependency>
     </dependencies>
 
     <dependencyManagement>
