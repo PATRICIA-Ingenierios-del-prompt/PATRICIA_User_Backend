@@ -8,7 +8,6 @@ import com.escuelaing.usuarios.domain.model.Perfil;
 import com.escuelaing.usuarios.domain.port.outbound.FotoAlbumStoragePort;
 import com.escuelaing.usuarios.domain.port.outbound.FotoPerfilStoragePort;
 import com.escuelaing.usuarios.domain.port.outbound.PerfilRepositoryPort;
-import com.escuelaing.usuarios.domain.port.outbound.PersonaDetectorPort;
 import com.escuelaing.usuarios.domain.port.outbound.UsuarioEventPublisherPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,7 +35,7 @@ class PerfilServiceTest {
     @Mock private UsuarioEventPublisherPort eventPublisher;
     @Mock private FotoPerfilStoragePort fotoPerfilStorage;
     @Mock private FotoAlbumStoragePort fotoAlbumStorage;
-    @Mock private PersonaDetectorPort personaDetector;
+    @Mock private PersonaVerificacionAsyncService personaVerificacionAsyncService;
 
     private PerfilService perfilService;
     private UUID usuarioId;
@@ -44,7 +43,7 @@ class PerfilServiceTest {
     @BeforeEach
     void setUp() {
         perfilService = new PerfilService(perfilRepository, eventPublisher,
-                fotoPerfilStorage, fotoAlbumStorage, personaDetector);
+                fotoPerfilStorage, fotoAlbumStorage, personaVerificacionAsyncService);
         usuarioId = UUID.randomUUID();
     }
 
@@ -312,6 +311,9 @@ class PerfilServiceTest {
         verify(fotoAlbumStorage).subirFotoAlbum(eq(usuarioId), any(), eq("image/jpeg"));
         verify(perfilRepository).guardar(perfil);
         verify(eventPublisher).publicarPerfilActualizado(usuarioId, List.of("urlFotoPerfil"));
+        // La detección de persona se dispara en background y no bloquea la
+        // respuesta de la subida (ver PersonaVerificacionAsyncService).
+        verify(personaVerificacionAsyncService).verificarPersonaEnFoto(usuarioId, "https://s3/nueva.jpg");
     }
 
     // ── actualizarFotoPerfilDesdeDataUrl ──────────────────────────────────────
