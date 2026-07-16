@@ -11,6 +11,8 @@ import com.escuelaing.usuarios.domain.port.outbound.FotoPerfilStoragePort;
 import com.escuelaing.usuarios.domain.port.outbound.PerfilRepositoryPort;
 import com.escuelaing.usuarios.domain.port.outbound.PersonaDetectorPort;
 import com.escuelaing.usuarios.domain.port.outbound.UsuarioEventPublisherPort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,8 @@ import java.util.regex.Pattern;
 @Service
 @Transactional
 public class PerfilService implements PerfilUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(PerfilService.class);
 
     private static final Pattern DATA_URL_PATTERN =
             Pattern.compile("^data:(?<mime>image/[a-zA-Z0-9.+-]+);base64,(?<contenido>.+)$",
@@ -202,17 +206,31 @@ public class PerfilService implements PerfilUseCase {
         perfil.resetearPersonaEnFoto();
 
         Perfil guardado = perfilRepository.guardar(perfil);
-        eventPublisher.publicarPerfilActualizado(usuarioId, List.of("urlFotoPerfil"));
+        publicarEventoSinFallar(() -> eventPublisher.publicarPerfilActualizado(usuarioId, List.of("urlFotoPerfil")));
 
         // Detección automática: llamar al sidecar Python en localhost:8090
         boolean tienePersona = personaDetector.tienPersona(url);
         if (tienePersona) {
             guardado.marcarPersonaDetectadaEnFoto();
             perfilRepository.guardar(guardado);
-            eventPublisher.publicarPersonaDetectadaEnFoto(usuarioId, guardado.getId());
+            publicarEventoSinFallar(() -> eventPublisher.publicarPersonaDetectadaEnFoto(usuarioId, guardado.getId()));
         }
 
         return guardado;
+    }
+
+    /**
+     * La foto ya quedó subida a S3 y guardada en Postgres en este punto: un
+     * evento de dominio que no se pudo publicar (RabbitMQ caído/inalcanzable)
+     * no debe convertir una subida exitosa en un 500 para el usuario. Mismo
+     * criterio de resiliencia que ya se aplica a {@link PersonaDetectorPort}.
+     */
+    private void publicarEventoSinFallar(Runnable publicar) {
+        try {
+            publicar.run();
+        } catch (Exception ex) {
+            log.error("No se pudo publicar el evento de perfil actualizado: {}", ex.getMessage());
+        }
     }
 
     @Override
