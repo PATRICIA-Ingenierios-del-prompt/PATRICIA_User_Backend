@@ -54,7 +54,9 @@ public class PerfilController {
     }
 
     @PutMapping("/{id}/perfil")
-    @Operation(summary = "Actualiza el perfil, o completa el onboarding cuando onboardingCompleto=true")
+    @Operation(summary = "Actualiza el perfil, o completa el onboarding cuando onboardingCompleto=true. "
+            + "Si se incluye franjasDisponibilidad, también reemplaza el horario de disponibilidad "
+            + "(equivalente a llamar PUT /{id}/disponibilidad/horaria en el mismo request).")
     public ResponseEntity<PerfilResponse> actualizarPerfil(@PathVariable UUID id,
                                                            @Valid @RequestBody ActualizarPerfilRequest request) {
         Perfil resultado;
@@ -68,6 +70,14 @@ public class PerfilController {
                     id, request.bio(), request.carrera(), request.semestre(),
                     request.intereses(), request.disponibilidad());
         }
+
+        if (request.franjasDisponibilidad() != null) {
+            List<FranjaHoraria> franjas = request.franjasDisponibilidad().stream()
+                    .map(f -> FranjaHoraria.crear(null, f.diaSemana(), f.horaInicio(), f.horaFin()))
+                    .toList();
+            resultado = perfilUseCase.actualizarFranjasDisponibilidad(id, franjas);
+        }
+
         return ResponseEntity.ok(mapper.toResponse(resultado));
     }
 

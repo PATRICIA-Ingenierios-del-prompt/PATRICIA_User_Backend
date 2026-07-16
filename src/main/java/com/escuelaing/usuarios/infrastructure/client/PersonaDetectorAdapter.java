@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
@@ -15,15 +16,21 @@ import java.util.Map;
  * Python (DeepFace/RetinaFace) que corre en localhost:8090 dentro del mismo
  * contenedor Docker.
  *
- * Si el sidecar no está disponible (aún arrancando, error transitorio) se
- * devuelve {@code false} y se registra el error — el flujo de subida de foto
- * no se interrumpe, y la detección puede re-intentarse después mediante el
- * endpoint PUT /{id}/fotos/{fotoId}/persona.
+ * La llamada es síncrona a propósito: la respuesta de subida de foto debe
+ * reflejar si cumple o no en el mismo request, sin que el frontend necesite
+ * recargar para verlo. Para que eso sea confiable, se reintenta un par de
+ * veces ante fallas de conexión (p.ej. justo después de un arranque de
+ * contenedor, cuando supervisord ya levantó el proceso Java pero el sidecar
+ * de Python/TensorFlow todavía está importando/cargando el modelo). Un error
+ * HTTP con respuesta real del sidecar (imagen no descargable, etc.) NO se
+ * reintenta, porque no es un problema de disponibilidad.
  */
 @Component
 public class PersonaDetectorAdapter implements PersonaDetectorPort {
 
     private static final Logger log = LoggerFactory.getLogger(PersonaDetectorAdapter.class);
+    private static final int MAX_INTENTOS = 3;
+    private static final long ESPERA_ENTRE_INTENTOS_MS = 700;
 
     private final RestTemplate restTemplate;
     private final String detectorUrl;
@@ -32,8 +39,8 @@ public class PersonaDetectorAdapter implements PersonaDetectorPort {
             @Value("${person-detector.url:http://localhost:8090}") String detectorUrl) {
 
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(5_000);   // 5 seconds
-        factory.setReadTimeout(30_000);     // 30 seconds
+        factory.setConnectTimeout(3_000);
+        factory.setReadTimeout(8_000);
 
         this.restTemplate = new RestTemplate(factory);
         this.detectorUrl = detectorUrl;
@@ -41,23 +48,48 @@ public class PersonaDetectorAdapter implements PersonaDetectorPort {
 
     @Override
     public boolean tienPersona(String urlFoto) {
-        try {
-            var body = Map.of("url_foto", urlFoto);
-            @SuppressWarnings("unchecked")
-            Map<String, Object> response = restTemplate.postForObject(
-                    detectorUrl + "/detect",
-                    body,
-                    Map.class
-            );
-            if (response == null) {
-                log.warn("El detector de personas devolvió respuesta nula para: {}", urlFoto);
+        for (int intento = 1; intento <= MAX_INTENTOS; intento++) {
+            try {
+                var body = Map.of("url_foto", urlFoto);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> response = restTemplate.postForObject(
+                        detectorUrl + "/detect",
+                        body,
+                        Map.class
+                );
+                if (response == null) {
+                    log.warn("El detector de personas devolvió respuesta nula para: {}", urlFoto);
+                    return false;
+                }
+                Object result = response.get("tiene_persona");
+                return Boolean.TRUE.equals(result);
+            } catch (ResourceAccessException ex) {
+                // Falla de conexión/timeout: el sidecar puede estar todavía
+                // arrancando. Vale la pena reintentar un par de veces.
+                log.warn("Intento {}/{} fallido llamando al detector de personas (url={}): {}",
+                        intento, MAX_INTENTOS, urlFoto, ex.getMessage());
+                if (intento == MAX_INTENTOS) {
+                    log.error("El detector de personas no respondió tras {} intentos (url={})",
+                            MAX_INTENTOS, urlFoto);
+                    return false;
+                }
+                dormir(ESPERA_ENTRE_INTENTOS_MS);
+            } catch (Exception ex) {
+                // Respuesta de error real del sidecar (p.ej. imagen no
+                // descargable): no es un problema de disponibilidad, no
+                // tiene sentido reintentar.
+                log.error("Error al llamar al detector de personas (url={}): {}", urlFoto, ex.getMessage());
                 return false;
             }
-            Object result = response.get("tiene_persona");
-            return Boolean.TRUE.equals(result);
-        } catch (Exception ex) {
-            log.error("Error al llamar al detector de personas (url={}): {}", urlFoto, ex.getMessage());
-            return false;
+        }
+        return false;
+    }
+
+    private void dormir(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 }
