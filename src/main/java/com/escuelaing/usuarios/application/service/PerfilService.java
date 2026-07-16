@@ -71,14 +71,8 @@ public class PerfilService implements PerfilUseCase {
     @Transactional(readOnly = true)
     @Cacheable(value = "perfiles", key = "#usuarioId")
     public Perfil obtenerPerfil(UUID usuarioId) {
-        Perfil perfil = perfilRepository.buscarPorUsuarioId(usuarioId)
+        return perfilRepository.buscarPorUsuarioId(usuarioId)
                 .orElseThrow(() -> new PerfilNoEncontradoException(usuarioId));
-        // El frontend usa este GET para decidir si mostrar el onboarding:
-        // mientras no esté completo, se trata igual que "no existe" (404).
-        if (!perfil.isOnboardingCompleto()) {
-            throw new PerfilNoEncontradoException(usuarioId);
-        }
-        return perfil;
     }
 
     @Override
