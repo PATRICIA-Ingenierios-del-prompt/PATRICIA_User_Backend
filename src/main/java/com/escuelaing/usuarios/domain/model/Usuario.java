@@ -24,6 +24,11 @@ public class Usuario {
     private static final Pattern DOMINIO_PERMITIDO =
             Pattern.compile("^[A-Za-z0-9._%+-]+@(mail\\.escuelaing\\.edu\\.co|escuelaing\\.edu\\.co)$");
 
+    /** Formato genérico de correo, sin restricción de dominio institucional.
+     *  Usado solo para jurados externos (crearJurado). */
+    private static final Pattern FORMATO_EMAIL_GENERICO =
+            Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+
     private UUID id;
     private String email;
     private String nombre;
@@ -84,6 +89,32 @@ public class Usuario {
     }
 
     /**
+     * Crea un usuario JURADO. A diferencia de {@link #crearNuevo}, NO exige
+     * dominio institucional: los jurados son externos y su correo/contraseña
+     * viven en credenciales_jurado (cargados manualmente por un admin). Solo
+     * se valida que el correo tenga forma de correo. Rol fijo: JURADO.
+     */
+    public static Usuario crearJurado(String email, String nombre) {
+        validarFormatoEmailGenerico(email);
+        Instant ahora = Instant.now();
+        Set<RolPlataforma> roles = new HashSet<>();
+        roles.add(RolPlataforma.JURADO);
+        return new Usuario(
+                UUID.randomUUID(),
+                email,
+                nombre,
+                null,
+                EstadoUsuario.ACTIVE,
+                roles,
+                ahora,
+                ahora,
+                null,
+                0,
+                null
+        );
+    }
+
+    /**
      * Reconstruye un usuario existente desde infraestructura (persistencia).
      * No aplica validaciones de creación; asume que el estado ya es válido.
      */
@@ -111,6 +142,12 @@ public class Usuario {
         if (email == null || !DOMINIO_PERMITIDO.matcher(email).matches()) {
             throw new DominioInvalidoException(
                     "El correo debe pertenecer a @mail.escuelaing.edu.co o @escuelaing.edu.co");
+        }
+    }
+
+    private static void validarFormatoEmailGenerico(String email) {
+        if (email == null || !FORMATO_EMAIL_GENERICO.matcher(email).matches()) {
+            throw new DominioInvalidoException("El correo no tiene un formato válido");
         }
     }
 

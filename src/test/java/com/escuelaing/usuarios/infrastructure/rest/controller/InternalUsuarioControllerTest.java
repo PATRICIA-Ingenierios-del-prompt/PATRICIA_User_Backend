@@ -5,13 +5,16 @@ import com.escuelaing.usuarios.domain.model.EstadoUsuario;
 import com.escuelaing.usuarios.domain.model.Perfil;
 import com.escuelaing.usuarios.domain.model.RolPlataforma;
 import com.escuelaing.usuarios.domain.model.Usuario;
+import com.escuelaing.usuarios.domain.exception.CredencialesInvalidasException;
 import com.escuelaing.usuarios.domain.exception.PerfilNoEncontradoException;
+import com.escuelaing.usuarios.domain.port.in.JuradoUseCase;
 import com.escuelaing.usuarios.domain.port.in.PerfilUseCase;
 import com.escuelaing.usuarios.domain.port.in.UsuarioUseCase;
 import com.escuelaing.usuarios.infrastructure.config.SecurityConfig;
 import com.escuelaing.usuarios.infrastructure.rest.advice.GlobalExceptionHandler;
 import com.escuelaing.usuarios.infrastructure.rest.dto.request.ActualizarEstadoRequest;
 import com.escuelaing.usuarios.infrastructure.rest.dto.request.FindOrCreateRequest;
+import com.escuelaing.usuarios.infrastructure.rest.dto.request.JuradoLoginRequest;
 import com.escuelaing.usuarios.infrastructure.rest.dto.response.UsuarioResponse;
 import com.escuelaing.usuarios.infrastructure.rest.mapper.UsuarioRestMapper;
 import com.escuelaing.usuarios.infrastructure.security.InternalApiKeyFilter;
@@ -63,6 +66,9 @@ class InternalUsuarioControllerTest {
 
     @MockBean
     private PerfilUseCase perfilUseCase;
+
+    @MockBean
+    private JuradoUseCase juradoUseCase;
 
     @MockBean
     private UsuarioRestMapper usuarioRestMapper;
@@ -149,6 +155,60 @@ class InternalUsuarioControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("test@mail.escuelaing.edu.co"));
+    }
+
+    @Test
+    void loginJurado_sinApiKey_retorna401() throws Exception {
+        String body = objectMapper.writeValueAsString(
+                new JuradoLoginRequest("jurado@ejemplo.com", "secret"));
+
+        mockMvc.perform(post("/internal/usuarios/jurado/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void loginJurado_conApiKeyValida_credencialesCorrectas_retorna200() throws Exception {
+        UUID id = UUID.randomUUID();
+        JuradoLoginRequest request = new JuradoLoginRequest("jurado@ejemplo.com", "secret");
+        Usuario usuario = Usuario.crearJurado("jurado@ejemplo.com", "jurado");
+
+        when(juradoUseCase.autenticar("jurado@ejemplo.com", "secret")).thenReturn(usuario);
+        when(usuarioRestMapper.toResponse(usuario)).thenReturn(
+                new UsuarioResponse(id, "jurado@ejemplo.com", "jurado", Set.of(RolPlataforma.JURADO), EstadoUsuario.ACTIVE, null));
+
+        mockMvc.perform(post("/internal/usuarios/jurado/login")
+                        .header(InternalApiKeyFilter.HEADER, VALID_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("jurado@ejemplo.com"));
+    }
+
+    @Test
+    void loginJurado_conApiKeyValida_credencialesIncorrectas_retorna401() throws Exception {
+        JuradoLoginRequest request = new JuradoLoginRequest("jurado@ejemplo.com", "wrong");
+
+        when(juradoUseCase.autenticar("jurado@ejemplo.com", "wrong"))
+                .thenThrow(new CredencialesInvalidasException());
+
+        mockMvc.perform(post("/internal/usuarios/jurado/login")
+                        .header(InternalApiKeyFilter.HEADER, VALID_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void loginJurado_conApiKeyValida_passwordVacio_retorna400() throws Exception {
+        mockMvc.perform(post("/internal/usuarios/jurado/login")
+                        .header(InternalApiKeyFilter.HEADER, VALID_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"jurado@ejemplo.com","password":""}
+                                """))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

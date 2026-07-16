@@ -9,5 +9,6 @@ public enum RolPlataforma {
     STUDENT,
     PROFESSOR,
     ADMIN,
-    MODERATOR
+    MODERATOR,
+    JURADO
 }
