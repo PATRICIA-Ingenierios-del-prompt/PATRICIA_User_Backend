@@ -50,8 +50,16 @@ externalSecrets:
   #                                  not per-service.
 
 resources:
-  requests: { cpu: 500m, memory: 768Mi }
-  limits:   { cpu: "1",  memory: 1Gi }
+  # El container corre, además del JVM, el sidecar Python (DeepFace/
+  # TensorFlow, vía supervisord) en el mismo pod, compartiendo este mismo
+  # límite. 1Gi era demasiado ajustado para los dos juntos: TensorFlow solo
+  # al importarse ya usa varios cientos de MB, y el JVM sin -Xmx explícito
+  # reserva ~25% de lo visible por ergonomía de contenedor. Sospecha de
+  # OOMKill en el arranque real (primera vez que la imagen llega a correr
+  # tras arreglar el build de Dockerfile) — ver JAVA_OPTS en supervisord.conf
+  # para el límite de heap explícito que acompaña este aumento.
+  requests: { cpu: 500m, memory: 1536Mi }
+  limits:   { cpu: "1.5", memory: 2560Mi }
 
 hpa:
   minReplicas: 2
