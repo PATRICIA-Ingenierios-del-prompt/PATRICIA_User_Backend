@@ -10,7 +10,7 @@ image:
 replicaCount: 2
 
 serviceAccount:
-  roleArn: "arn:aws:iam::406103775000:role/patricia-dev-users-irsa"
+  roleArn: "arn:aws:iam::188701360691:role/patricia-dev-users-irsa"
 
 config:
  
@@ -20,8 +20,8 @@ config:
   # itself treats an empty bucket as "not configured yet" and fails just that
   # one upload feature with a clear error, instead of failing to boot. Fill
   # in once S3 + IRSA are actually wired up for this service.
-  awsS3Bucket: "patricia-dev-uploads-406103775000"
-  awsS3PublicUrlBase: "https://d26pt6qlbaevlh.cloudfront.net"
+  awsS3Bucket: "patricia-dev-uploads-188701360691"
+  awsS3PublicUrlBase: "https://d1uaykdrxdyy3x.cloudfront.net"
   awsS3Region: "us-east-1"
   
 
