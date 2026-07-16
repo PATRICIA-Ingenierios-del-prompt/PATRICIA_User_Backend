@@ -2,7 +2,6 @@ package com.escuelaing.usuarios.infrastructure.persistence.entity;
 
 import com.escuelaing.usuarios.domain.model.Disponibilidad;
 import com.escuelaing.usuarios.domain.model.Genero;
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -12,7 +11,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -84,11 +82,6 @@ public class PerfilEntity {
     @Column(name = "tiene_persona_en_foto", nullable = false)
     @Builder.Default
     private boolean tienePersonaEnFoto = false;
-
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
-    @JoinColumn(name = "perfil_id")
-    @Builder.Default
-    private List<FranjaHorariaEntity> franjasDisponibilidad = new ArrayList<>();
 
     @Column(name = "onboarding_completo", nullable = false)
     @Builder.Default
