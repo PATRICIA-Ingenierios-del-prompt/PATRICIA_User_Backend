@@ -5,6 +5,8 @@ import org.springframework.amqp.core.Declarable;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
@@ -23,6 +25,26 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 public class RabbitMqConfig {
+
+    /**
+     * ignoreDeclarationExceptions=true: si CUALQUIER exchange externo (de
+     * otro microservicio) todavía no existe al arrancar — típico durante un
+     * despliegue con timing no coordinado entre servicios, p. ej. una
+     * migración de cuenta AWS — por defecto RabbitAdmin aborta la
+     * declaración de TODAS las colas/bindings propios al primer error de
+     * canal, no solo la del exchange faltante (confirmado localmente: sin
+     * este flag, un solo exchange ausente deja usuarios.logros-* con
+     * consumidor pero sin binding real, sin ningún error visible). Con el
+     * flag, cada declaración se intenta de forma independiente y las que sí
+     * pueden completarse quedan bien declaradas; las que fallan quedan
+     * logueadas como warning y se reintentan en la próxima reconexión.
+     */
+    @Bean
+    public RabbitAdmin rabbitAdmin(ConnectionFactory connectionFactory) {
+        RabbitAdmin admin = new RabbitAdmin(connectionFactory);
+        admin.setIgnoreDeclarationExceptions(true);
+        return admin;
+    }
 
     // --- Exchange propio ---
     public static final String EXCHANGE_USUARIOS = "patricia.usuarios";
