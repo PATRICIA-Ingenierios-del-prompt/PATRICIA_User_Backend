@@ -48,8 +48,13 @@ EOF
 # ═══════════════════════════════════════════════════════════════════════════════
 FROM eclipse-temurin:21-jre-jammy
 
-# Instalar Python 3.11, pip, supervisord y librerías de visión
+# Instalar Python 3.11, pip, supervisord y librerías de visión.
+# eclipse-temurin:21-jre-jammy es Ubuntu 22.04, que por defecto solo trae
+# Python 3.10 en sus repos — python3.11 no existe ahí sin el PPA deadsnakes.
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        software-properties-common gnupg ca-certificates \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
         python3.11 python3-pip python3.11-distutils libpython3.11 \
         supervisor \
         libgl1 libglib2.0-0 libsm6 libxrender1 libxext6 \
