@@ -169,6 +169,22 @@ jobs:
             --set image.tag=${{ needs.push-image.outputs.image_tag }} \
             --wait --timeout 10m
 
+      - name: Diagnóstico del pod si el rollout no quedó listo
+        # helm --wait solo dice "context deadline exceeded"; esto vuelca por
+        # qué el pod nunca pasó sus probes (OOMKilled, CrashLoopBackOff,
+        # ImagePullBackOff, etc.) directo en el log del job, sin necesitar
+        # acceso aparte al clúster.
+        if: failure()
+        run: |
+          echo "--- kubectl get pods ---"
+          kubectl get pods -n patricia-app -l app=users -o wide
+          echo "--- kubectl describe pod ---"
+          kubectl describe pod -n patricia-app -l app=users
+          echo "--- kubectl logs (contenedor actual) ---"
+          kubectl logs -n patricia-app -l app=users --all-containers --tail=200 || true
+          echo "--- kubectl logs --previous (si hubo restart) ---"
+          kubectl logs -n patricia-app -l app=users --all-containers --previous --tail=200 || true
+
       - name: Smoke check
         run: |
           # Same reasoning as Auth: the public ingress routes /api to the
