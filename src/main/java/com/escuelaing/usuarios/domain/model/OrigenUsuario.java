@@ -5,5 +5,6 @@ package com.escuelaing.usuarios.domain.model;
  */
 public enum OrigenUsuario {
     MICROSOFT,
-    OTP
+    OTP,
+    JURADO
 }

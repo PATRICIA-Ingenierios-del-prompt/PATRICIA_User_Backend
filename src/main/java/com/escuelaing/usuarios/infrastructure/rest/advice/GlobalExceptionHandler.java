@@ -1,5 +1,6 @@
 package com.escuelaing.usuarios.infrastructure.rest.advice;
 
+import com.escuelaing.usuarios.domain.exception.CredencialesInvalidasException;
 import com.escuelaing.usuarios.domain.exception.DominioInvalidoException;
 import com.escuelaing.usuarios.domain.exception.EstadoUsuarioInvalidoException;
 import com.escuelaing.usuarios.domain.exception.FotoNoEncontradaException;
@@ -33,6 +34,7 @@ import java.util.stream.Collectors;
  * - OnboardingYaCompletadoException -> 409
  * - UsuarioNoEncontradoException / PerfilNoEncontradoException / FotoNoEncontradaException -> 404
  * - RolNoPermitidoException / AccessDeniedException -> 403
+ * - CredencialesInvalidasException -> 401
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -87,6 +89,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest req) {
         return build(HttpStatus.FORBIDDEN, "AccesoDenegado", "No tiene permisos para realizar esta acción");
+    }
+
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    public ResponseEntity<ErrorResponse> handleCredencialesInvalidas(CredencialesInvalidasException ex,
+                                                                       HttpServletRequest req) {
+        return build(HttpStatus.UNAUTHORIZED, "CredencialesInvalidas", ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

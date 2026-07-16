@@ -2,10 +2,12 @@ package com.escuelaing.usuarios.infrastructure.rest.controller;
 
 import com.escuelaing.usuarios.domain.model.Perfil;
 import com.escuelaing.usuarios.domain.model.Usuario;
+import com.escuelaing.usuarios.domain.port.in.JuradoUseCase;
 import com.escuelaing.usuarios.domain.port.in.PerfilUseCase;
 import com.escuelaing.usuarios.domain.port.in.UsuarioUseCase;
 import com.escuelaing.usuarios.infrastructure.rest.dto.request.ActualizarEstadoRequest;
 import com.escuelaing.usuarios.infrastructure.rest.dto.request.FindOrCreateRequest;
+import com.escuelaing.usuarios.infrastructure.rest.dto.request.JuradoLoginRequest;
 import com.escuelaing.usuarios.infrastructure.rest.dto.response.FranjaHorariaResponse;
 import com.escuelaing.usuarios.infrastructure.rest.dto.response.PerfilMatchingResponse;
 import com.escuelaing.usuarios.infrastructure.rest.dto.response.UsuarioResponse;
@@ -47,12 +49,14 @@ public class InternalUsuarioController {
 
     private final UsuarioUseCase usuarioUseCase;
     private final PerfilUseCase perfilUseCase;
+    private final JuradoUseCase juradoUseCase;
     private final UsuarioRestMapper mapper;
 
     public InternalUsuarioController(UsuarioUseCase usuarioUseCase, PerfilUseCase perfilUseCase,
-                                      UsuarioRestMapper mapper) {
+                                      JuradoUseCase juradoUseCase, UsuarioRestMapper mapper) {
         this.usuarioUseCase = usuarioUseCase;
         this.perfilUseCase = perfilUseCase;
+        this.juradoUseCase = juradoUseCase;
         this.mapper = mapper;
     }
 
@@ -66,6 +70,15 @@ public class InternalUsuarioController {
         return resultado.creado()
                 ? ResponseEntity.status(201).body(response)
                 : ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/jurado/login")
+    @Operation(summary = "Autentica un jurado externo por correo + contraseña (credenciales "
+            + "precargadas manualmente, sin restricción de dominio). Usado por auth-service. "
+            + "401 si el correo no está registrado o la contraseña no coincide.")
+    public ResponseEntity<UsuarioResponse> loginJurado(@Valid @RequestBody JuradoLoginRequest request) {
+        Usuario usuario = juradoUseCase.autenticar(request.email(), request.password());
+        return ResponseEntity.ok(mapper.toResponse(usuario));
     }
 
     @GetMapping("/{id}")
