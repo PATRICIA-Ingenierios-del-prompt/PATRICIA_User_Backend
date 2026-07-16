@@ -6,6 +6,7 @@ import com.escuelaing.usuarios.domain.port.in.PerfilUseCase;
 import com.escuelaing.usuarios.domain.port.in.UsuarioUseCase;
 import com.escuelaing.usuarios.infrastructure.rest.dto.request.ActualizarEstadoRequest;
 import com.escuelaing.usuarios.infrastructure.rest.dto.request.FindOrCreateRequest;
+import com.escuelaing.usuarios.infrastructure.rest.dto.response.FranjaHorariaResponse;
 import com.escuelaing.usuarios.infrastructure.rest.dto.response.PerfilMatchingResponse;
 import com.escuelaing.usuarios.infrastructure.rest.dto.response.UsuarioResponse;
 import com.escuelaing.usuarios.infrastructure.rest.mapper.UsuarioRestMapper;
@@ -116,13 +117,23 @@ public class InternalUsuarioController {
     }
 
     private PerfilMatchingResponse aPerfilMatchingResponse(String estado, Perfil perfil) {
+        List<FranjaHorariaResponse> franjas = perfil.getFranjasDisponibilidad() == null
+                ? List.of()
+                : perfil.getFranjasDisponibilidad().stream()
+                        .map(f -> new FranjaHorariaResponse(
+                                f.getId(), f.getDiaSemana(), f.getHoraInicio(), f.getHoraFin()))
+                        .toList();
+
         return new PerfilMatchingResponse(
                 perfil.getUsuarioId(),
                 estado,
                 perfil.getIntereses(),
                 perfil.getCarrera(),
                 perfil.getSemestre(),
-                perfil.getDisponibilidad().name()
+                perfil.getDisponibilidad().name(),
+                perfil.getUrlFotoPerfil(),
+                perfil.isTienePersonaEnFoto(),
+                franjas
         );
     }
 }

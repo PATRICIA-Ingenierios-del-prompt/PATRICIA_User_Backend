@@ -9,7 +9,6 @@ import com.escuelaing.usuarios.domain.port.in.PerfilUseCase;
 import com.escuelaing.usuarios.domain.port.outbound.FotoAlbumStoragePort;
 import com.escuelaing.usuarios.domain.port.outbound.FotoPerfilStoragePort;
 import com.escuelaing.usuarios.domain.port.outbound.PerfilRepositoryPort;
-import com.escuelaing.usuarios.domain.port.outbound.PersonaDetectorPort;
 import com.escuelaing.usuarios.domain.port.outbound.UsuarioEventPublisherPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,18 +52,18 @@ public class PerfilService implements PerfilUseCase {
     private final UsuarioEventPublisherPort eventPublisher;
     private final FotoPerfilStoragePort fotoPerfilStorage;
     private final FotoAlbumStoragePort fotoAlbumStorage;
-    private final PersonaDetectorPort personaDetector;
+    private final PersonaVerificacionAsyncService personaVerificacionAsyncService;
 
     public PerfilService(PerfilRepositoryPort perfilRepository,
                          UsuarioEventPublisherPort eventPublisher,
                          FotoPerfilStoragePort fotoPerfilStorage,
                          FotoAlbumStoragePort fotoAlbumStorage,
-                         PersonaDetectorPort personaDetector) {
+                         PersonaVerificacionAsyncService personaVerificacionAsyncService) {
         this.perfilRepository = perfilRepository;
         this.eventPublisher = eventPublisher;
         this.fotoPerfilStorage = fotoPerfilStorage;
         this.fotoAlbumStorage = fotoAlbumStorage;
-        this.personaDetector = personaDetector;
+        this.personaVerificacionAsyncService = personaVerificacionAsyncService;
     }
 
     @Override
@@ -208,13 +207,13 @@ public class PerfilService implements PerfilUseCase {
         Perfil guardado = perfilRepository.guardar(perfil);
         publicarEventoSinFallar(() -> eventPublisher.publicarPerfilActualizado(usuarioId, List.of("urlFotoPerfil")));
 
-        // Detección automática: llamar al sidecar Python en localhost:8090
-        boolean tienePersona = personaDetector.tienPersona(url);
-        if (tienePersona) {
-            guardado.marcarPersonaDetectadaEnFoto();
-            perfilRepository.guardar(guardado);
-            publicarEventoSinFallar(() -> eventPublisher.publicarPersonaDetectadaEnFoto(usuarioId, guardado.getId()));
-        }
+        // Detección automática en background: el sidecar Python (DeepFace/
+        // RetinaFace) puede tardar hasta 30s en responder (timeout + modelo
+        // frío). Hacerlo síncrono aquí hacía que la subida pareciera fallar
+        // ("no cumple") cuando en realidad la detección aún no terminaba; el
+        // usuario solo veía el estado correcto al recargar la página, una vez
+        // que la verificación ya había terminado en segundo plano.
+        personaVerificacionAsyncService.verificarPersonaEnFoto(usuarioId, url);
 
         return guardado;
     }

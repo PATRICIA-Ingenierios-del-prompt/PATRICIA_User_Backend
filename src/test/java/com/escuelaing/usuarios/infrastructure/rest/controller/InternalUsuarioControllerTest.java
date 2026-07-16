@@ -222,10 +222,15 @@ class InternalUsuarioControllerTest {
     void obtenerPerfilMatching_conApiKeyValida_retorna200() throws Exception {
         UUID id = UUID.randomUUID();
         Usuario usuario = Usuario.crearNuevo("test@mail.escuelaing.edu.co", "Test", null);
+        UUID perfilId = UUID.randomUUID();
+        List<com.escuelaing.usuarios.domain.model.FranjaHoraria> franjas = List.of(
+                com.escuelaing.usuarios.domain.model.FranjaHoraria.crear(
+                        perfilId, java.time.DayOfWeek.MONDAY,
+                        java.time.LocalTime.of(8, 0), java.time.LocalTime.of(10, 0)));
         Perfil perfil = Perfil.reconstruir(
-                UUID.randomUUID(), id, "Test", "Apellido", "bio", "Ingeniería de Sistemas", null,
-                5, null, null, List.of("Música", "Deportes"), Disponibilidad.DISPONIBLE, null,
-                true, Instant.now());
+                perfilId, id, "Test", "Apellido", "bio", "Ingeniería de Sistemas", null,
+                5, null, null, List.of("Música", "Deportes"), Disponibilidad.DISPONIBLE,
+                "https://s3/foto.jpg", true, franjas, true, Instant.now());
 
         when(usuarioUseCase.buscarPorId(id)).thenReturn(usuario);
         when(perfilUseCase.obtenerPerfil(id)).thenReturn(perfil);
@@ -236,7 +241,11 @@ class InternalUsuarioControllerTest {
                 .andExpect(jsonPath("$.estado").value("ACTIVE"))
                 .andExpect(jsonPath("$.carrera").value("Ingeniería de Sistemas"))
                 .andExpect(jsonPath("$.semestre").value(5))
-                .andExpect(jsonPath("$.disponibilidad").value("DISPONIBLE"));
+                .andExpect(jsonPath("$.disponibilidad").value("DISPONIBLE"))
+                .andExpect(jsonPath("$.urlFotoPerfil").value("https://s3/foto.jpg"))
+                .andExpect(jsonPath("$.tienePersonaEnFoto").value(true))
+                .andExpect(jsonPath("$.franjasDisponibilidad[0].diaSemana").value("MONDAY"))
+                .andExpect(jsonPath("$.franjasDisponibilidad[0].horaInicio").value("08:00:00"));
     }
 
     @Test
