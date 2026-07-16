@@ -245,7 +245,7 @@ class InternalUsuarioControllerTest {
                 .andExpect(jsonPath("$.urlFotoPerfil").value("https://s3/foto.jpg"))
                 .andExpect(jsonPath("$.tienePersonaEnFoto").value(true))
                 .andExpect(jsonPath("$.franjasDisponibilidad[0].diaSemana").value("MONDAY"))
-                .andExpect(jsonPath("$.franjasDisponibilidad[0].horaInicio").value("08:00:00"));
+                .andExpect(jsonPath("$.franjasDisponibilidad[0].horaInicio").value("08:00"));
     }
 
     @Test

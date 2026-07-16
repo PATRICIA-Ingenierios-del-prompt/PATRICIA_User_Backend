@@ -131,7 +131,7 @@ class PerfilControllerTest {
         UUID id = UUID.randomUUID();
         ActualizarPerfilRequest req = new ActualizarPerfilRequest(
                 null, null, "Sistemas", null, 6, null, null, null,
-                List.of("Gimnasio"), false, "Bio nueva", Disponibilidad.OCUPADO);
+                List.of("Gimnasio"), false, "Bio nueva", Disponibilidad.OCUPADO, null);
 
         Perfil perfil = Perfil.crearVacio(id);
         PerfilResponse response = resp(id, "Carlos", "Bio nueva", Disponibilidad.OCUPADO, false);
@@ -149,12 +149,38 @@ class PerfilControllerTest {
     }
 
     @Test
+    void actualizarPerfil_conFranjasDisponibilidad_tambienReemplazaElHorario() throws Exception {
+        UUID id = UUID.randomUUID();
+        ActualizarPerfilRequest req = new ActualizarPerfilRequest(
+                null, null, "Sistemas", null, 6, null, null, null,
+                List.of("Gimnasio"), false, "Bio nueva", Disponibilidad.OCUPADO,
+                List.of(new FranjaHorariaRequest(DayOfWeek.MONDAY, LocalTime.of(8, 0), LocalTime.of(10, 0))));
+
+        Perfil perfilActualizado = Perfil.crearVacio(id);
+        Perfil perfilConFranjas = Perfil.crearVacio(id);
+        PerfilResponse response = resp(id, "Carlos", "Bio nueva", Disponibilidad.OCUPADO, false);
+
+        when(perfilUseCase.actualizarPerfil(eq(id), eq("Bio nueva"), eq("Sistemas"),
+                eq(6), eq(List.of("Gimnasio")), eq(Disponibilidad.OCUPADO))).thenReturn(perfilActualizado);
+        when(perfilUseCase.actualizarFranjasDisponibilidad(eq(id), any())).thenReturn(perfilConFranjas);
+        when(mapper.toResponse(perfilConFranjas)).thenReturn(response);
+
+        mockMvc.perform(put("/api/v1/usuarios/{id}/perfil", id)
+                        .header("Authorization", token(id))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isOk());
+
+        org.mockito.Mockito.verify(perfilUseCase).actualizarFranjasDisponibilidad(eq(id), any());
+    }
+
+    @Test
     void actualizarPerfil_onboarding_retorna200() throws Exception {
         UUID id = UUID.randomUUID();
         LocalDate fechaNac = LocalDate.of(2002, 5, 20);
         ActualizarPerfilRequest req = new ActualizarPerfilRequest(
                 "Carlos", "Perez", "Sistemas", null, 4, fechaNac,
-                Genero.MASCULINO, "foto-data", List.of("Gimnasio"), true, null, null);
+                Genero.MASCULINO, "foto-data", List.of("Gimnasio"), true, null, null, null);
 
         Perfil perfil = Perfil.crearVacio(id);
         PerfilResponse response = resp(id, "Carlos", null, Disponibilidad.DISPONIBLE, false);
@@ -275,6 +301,46 @@ class PerfilControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"franjas\":[]}"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void obtenerFranjasDisponibilidad_devuelveHorasEnFormatoHHmm() throws Exception {
+        UUID id = UUID.randomUUID();
+        com.escuelaing.usuarios.infrastructure.rest.dto.response.FranjaHorariaResponse franja =
+                new com.escuelaing.usuarios.infrastructure.rest.dto.response.FranjaHorariaResponse(
+                        UUID.randomUUID(), DayOfWeek.MONDAY, LocalTime.of(8, 0), LocalTime.of(10, 0));
+        PerfilResponse response = new PerfilResponse(
+                UUID.randomUUID(), id, "Carlos", "Apellidos", "bio",
+                "Sistemas", null, 5, LocalDate.of(2000, 1, 1),
+                Genero.MASCULINO, List.of("Gimnasio"), Disponibilidad.DISPONIBLE,
+                "https://s3/foto.jpg", false, List.of(franja), true);
+
+        when(perfilUseCase.obtenerPerfil(id)).thenReturn(Perfil.crearVacio(id));
+        when(mapper.toResponse(any())).thenReturn(response);
+
+        // El frontend guarda y compara "HH:mm" para repintar su grilla semanal;
+        // si Jackson serializara con segundos ("08:00:00") nunca haría match.
+        mockMvc.perform(get("/api/v1/usuarios/{id}/disponibilidad/horaria", id)
+                        .header("Authorization", token(id)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.franjasDisponibilidad[0].horaInicio").value("08:00"))
+                .andExpect(jsonPath("$.franjasDisponibilidad[0].horaFin").value("10:00"));
+    }
+
+    @Test
+    void obtenerFranjasDisponibilidad_conTokenDeOtroUsuario_puedeVerHorarioDeUnAmigo() throws Exception {
+        UUID duenoId = UUID.randomUUID();
+        UUID otroUsuarioId = UUID.randomUUID();
+        PerfilResponse response = resp(duenoId, "Ana", "bio", Disponibilidad.DISPONIBLE, false);
+
+        when(perfilUseCase.obtenerPerfil(duenoId)).thenReturn(Perfil.crearVacio(duenoId));
+        when(mapper.toResponse(any())).thenReturn(response);
+
+        // Un match confirmado consulta el horario de su amigo con SU propio
+        // token, no el del dueño del perfil — no debe bloquearse.
+        mockMvc.perform(get("/api/v1/usuarios/{id}/disponibilidad/horaria", duenoId)
+                        .header("Authorization", token(otroUsuarioId)))
+                .andExpect(status().isOk());
     }
 
     // ── disponibilidad general ────────────────────────────────────────────────

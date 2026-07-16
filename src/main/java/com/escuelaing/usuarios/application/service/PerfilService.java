@@ -9,6 +9,7 @@ import com.escuelaing.usuarios.domain.port.in.PerfilUseCase;
 import com.escuelaing.usuarios.domain.port.outbound.FotoAlbumStoragePort;
 import com.escuelaing.usuarios.domain.port.outbound.FotoPerfilStoragePort;
 import com.escuelaing.usuarios.domain.port.outbound.PerfilRepositoryPort;
+import com.escuelaing.usuarios.domain.port.outbound.PersonaDetectorPort;
 import com.escuelaing.usuarios.domain.port.outbound.UsuarioEventPublisherPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,18 +53,18 @@ public class PerfilService implements PerfilUseCase {
     private final UsuarioEventPublisherPort eventPublisher;
     private final FotoPerfilStoragePort fotoPerfilStorage;
     private final FotoAlbumStoragePort fotoAlbumStorage;
-    private final PersonaVerificacionAsyncService personaVerificacionAsyncService;
+    private final PersonaDetectorPort personaDetector;
 
     public PerfilService(PerfilRepositoryPort perfilRepository,
                          UsuarioEventPublisherPort eventPublisher,
                          FotoPerfilStoragePort fotoPerfilStorage,
                          FotoAlbumStoragePort fotoAlbumStorage,
-                         PersonaVerificacionAsyncService personaVerificacionAsyncService) {
+                         PersonaDetectorPort personaDetector) {
         this.perfilRepository = perfilRepository;
         this.eventPublisher = eventPublisher;
         this.fotoPerfilStorage = fotoPerfilStorage;
         this.fotoAlbumStorage = fotoAlbumStorage;
-        this.personaVerificacionAsyncService = personaVerificacionAsyncService;
+        this.personaDetector = personaDetector;
     }
 
     @Override
@@ -207,13 +208,16 @@ public class PerfilService implements PerfilUseCase {
         Perfil guardado = perfilRepository.guardar(perfil);
         publicarEventoSinFallar(() -> eventPublisher.publicarPerfilActualizado(usuarioId, List.of("urlFotoPerfil")));
 
-        // Detección automática en background: el sidecar Python (DeepFace/
-        // RetinaFace) puede tardar hasta 30s en responder (timeout + modelo
-        // frío). Hacerlo síncrono aquí hacía que la subida pareciera fallar
-        // ("no cumple") cuando en realidad la detección aún no terminaba; el
-        // usuario solo veía el estado correcto al recargar la página, una vez
-        // que la verificación ya había terminado en segundo plano.
-        personaVerificacionAsyncService.verificarPersonaEnFoto(usuarioId, url);
+        // Detección síncrona: la respuesta de este mismo request debe reflejar
+        // si la foto cumple o no, sin que el frontend tenga que recargar la
+        // página para verlo. PersonaDetectorAdapter reintenta ante fallas
+        // transitorias (p.ej. el sidecar Python todavía arrancando).
+        boolean tienePersona = personaDetector.tienPersona(url);
+        if (tienePersona) {
+            guardado.marcarPersonaDetectadaEnFoto();
+            perfilRepository.guardar(guardado);
+            publicarEventoSinFallar(() -> eventPublisher.publicarPersonaDetectadaEnFoto(usuarioId, guardado.getId()));
+        }
 
         return guardado;
     }
