@@ -6,9 +6,11 @@ import java.util.UUID;
  * Mensaje consumido del exchange externo event.events (RK
  * event.participant.joined).
  *
- * ⚠️ Nombres de campo asumidos siguiendo la convención de mensajes de este
- * repo; confirmar el contrato exacto con event-service antes de desplegar a
- * un ambiente compartido.
+ * Contrato real confirmado contra event-service (ParticipantJoinedEvent):
+ * {eventId, userId, category, joinedAt}. Aquí solo se declaran los tres
+ * campos que usan las reglas de logro; joinedAt se ignora al deserializar.
+ * Ojo: el usuario viaja en userId, mientras que en event.created viaja en
+ * ownerId — por eso los dos mensajes son records distintos.
  */
-public record EventoParticipanteUnidoMensaje(UUID usuarioId, UUID eventoId, String categoria) {
+public record EventoParticipanteUnidoMensaje(UUID eventId, UUID userId, String category) {
 }

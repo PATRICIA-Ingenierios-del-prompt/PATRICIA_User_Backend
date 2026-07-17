@@ -30,15 +30,15 @@ public class EventoLogroConsumer {
     public void onEventoCreado(EventoCreadoMensaje mensaje) {
         log.info("Logro: mensaje recibido de {} (RK {}) para usuario {} — evento={} categoria={}",
                 RabbitMqConfig.EXCHANGE_EVENT_EVENTS, RabbitMqConfig.RK_EVENT_CREATED,
-                mensaje.usuarioId(), mensaje.eventoId(), mensaje.categoria());
-        logroUseCase.procesarActividadEvento(mensaje.usuarioId(), mensaje.eventoId(), mensaje.categoria());
+                mensaje.ownerId(), mensaje.eventId(), mensaje.category());
+        logroUseCase.procesarActividadEvento(mensaje.ownerId(), mensaje.eventId(), mensaje.category());
     }
 
     @RabbitListener(queues = RabbitMqConfig.QUEUE_LOGROS_EVENTO_PARTICIPANTE)
     public void onEventoParticipanteUnido(EventoParticipanteUnidoMensaje mensaje) {
         log.info("Logro: mensaje recibido de {} (RK {}) para usuario {} — evento={} categoria={}",
                 RabbitMqConfig.EXCHANGE_EVENT_EVENTS, RabbitMqConfig.RK_EVENT_PARTICIPANT_JOINED,
-                mensaje.usuarioId(), mensaje.eventoId(), mensaje.categoria());
-        logroUseCase.procesarActividadEvento(mensaje.usuarioId(), mensaje.eventoId(), mensaje.categoria());
+                mensaje.userId(), mensaje.eventId(), mensaje.category());
+        logroUseCase.procesarActividadEvento(mensaje.userId(), mensaje.eventId(), mensaje.category());
     }
 }
