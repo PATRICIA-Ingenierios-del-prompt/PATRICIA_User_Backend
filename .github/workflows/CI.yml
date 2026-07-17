@@ -167,7 +167,7 @@ jobs:
             --namespace patricia-app \
             --set image.repository=${{ vars.ECR_REGISTRY }}/${{ env.IMAGE_NAME }} \
             --set image.tag=${{ needs.push-image.outputs.image_tag }} \
-            --wait --timeout 10m
+            --wait --timeout 15m
 
       - name: Diagnóstico del pod si el rollout no quedó listo
         # helm --wait solo dice "context deadline exceeded"; esto vuelca por

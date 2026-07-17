@@ -38,19 +38,27 @@ spec:
           # - SecurityConfig here already permits /actuator/health/** with a
           #   wildcard (unlike Auth's original exact-match-only bug), so the
           #   liveness subpath is already reachable without any code change.
+          # failureThreshold:60 (5 min de gracia, antes 30/2.5 min): la imagen
+          # ahora arranca JVM + sidecar Python (TensorFlow/DeepFace) a la vez
+          # en Fargate frío, y el pull de la imagen (~3 GB) + carga del modelo
+          # compiten por CPU con el boot de Spring.
           startupProbe:
             httpGet: { path: /actuator/health, port: 8082 }
             periodSeconds: 5
-            timeoutSeconds: 3
-            failureThreshold: 30
+            timeoutSeconds: 5
+            failureThreshold: 60
+          # timeoutSeconds:5 en readiness/liveness: mientras el sidecar procesa
+          # una foto (TensorFlow a plena CPU) el actuator puede tardar >3s en
+          # responder sin estar colgado; con 3s la liveness podía matar un pod
+          # perfectamente sano en pleno análisis.
           readinessProbe:
             httpGet: { path: /actuator/health, port: 8082 }
             periodSeconds: 10
-            timeoutSeconds: 3
+            timeoutSeconds: 5
           livenessProbe:
             httpGet: { path: /actuator/health/liveness, port: 8082 }
             periodSeconds: 15
-            timeoutSeconds: 3
-            failureThreshold: 3
+            timeoutSeconds: 5
+            failureThreshold: 4
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
