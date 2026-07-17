@@ -44,30 +44,39 @@ for url, dest in files:
 EOF
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Stage 3 – Imagen final: Java (JRE) + Python + supervisord
+# Stage 3 – Imagen final: python:3.11-slim (MISMA base que el stage 2) + JRE.
+#
+# Antes la base era eclipse-temurin (Ubuntu) + Python 3.11 de deadsnakes, y se
+# copiaban encima los paquetes pip del stage 2 (Debian). Dos Pythons distintos:
+# el de Ubuntu busca en dist-packages y NUNCA ve el site-packages copiado →
+# "ModuleNotFoundError: No module named 'uvicorn'" y person-detector en FATAL.
+#
+# Ahora el runtime ES python:3.11-slim (idéntico al builder, el COPY de
+# site-packages es seguro por construcción) y el JRE de Temurin se copia como
+# directorio autocontenido — patrón estándar, solo necesita glibc.
 # ═══════════════════════════════════════════════════════════════════════════════
-FROM eclipse-temurin:21-jre-jammy
+FROM python:3.11-slim
 
-# Instalar Python 3.11, pip, supervisord y librerías de visión.
-# eclipse-temurin:21-jre-jammy es Ubuntu 22.04, que por defecto solo trae
-# Python 3.10 en sus repos — python3.11 no existe ahí sin el PPA deadsnakes.
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+COPY --from=eclipse-temurin:21-jre-jammy /opt/java/openjdk /opt/java/openjdk
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        software-properties-common gnupg ca-certificates \
-    && add-apt-repository -y ppa:deadsnakes/ppa \
-    && apt-get update && apt-get install -y --no-install-recommends \
-        python3.11 python3-pip python3.11-distutils libpython3.11 \
         supervisor \
         libgl1 libglib2.0-0 libsm6 libxrender1 libxext6 \
-    && rm -rf /var/lib/apt/lists/* \
-    && ln -sf /usr/bin/python3.11 /usr/bin/python3 \
-    && ln -sf /usr/bin/python3    /usr/bin/python
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # ── Python: copiar paquetes instalados y pesos del modelo ────────────────────
+# Misma imagen base que el stage 2 → mismo layout /usr/local, copia 1:1 segura.
 COPY --from=model-downloader /usr/local/lib/python3.11 /usr/local/lib/python3.11
 COPY --from=model-downloader /usr/local/bin            /usr/local/bin
 COPY --from=model-downloader /root/.deepface           /root/.deepface
+
+# Fail-fast en build: si el JRE o uvicorn no funcionan, que reviente AQUÍ y no
+# en el arranque del pod.
+RUN java -version && python -m uvicorn --version
 
 # ── Python: código del detector ──────────────────────────────────────────────
 COPY person-detector/app ./person-detector/app
