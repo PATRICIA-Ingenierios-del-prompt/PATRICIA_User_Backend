@@ -21,6 +21,14 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    # La tabla flyway_schema_history se borró junto con los datos de prueba,
+    # pero el esquema (V1..V12) sigue aplicado y AHORA tiene datos reales.
+    # baseline-on-migrate: si el esquema NO está vacío y no hay historial,
+    # Flyway registra un baseline en la versión indicada y solo ejecuta
+    # migraciones POSTERIORES — no re-crea nada ni toca datos. En una BD
+    # vacía (dev local nueva) no aplica: corren todas las migraciones normal.
+    baseline-on-migrate: true
+    baseline-version: 12 # = última migración ya aplicada (V12__support_tickets)
 
   rabbitmq:
     addresses: ${SPRING_RABBITMQ_ADDRESSES}
