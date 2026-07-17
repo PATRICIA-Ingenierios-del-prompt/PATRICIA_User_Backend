@@ -1,6 +1,7 @@
 package com.escuelaing.usuarios.infrastructure.persistence.repository;
 
 import com.escuelaing.usuarios.infrastructure.persistence.entity.UsuarioEntity;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -23,4 +24,14 @@ public interface UsuarioJpaRepository extends JpaRepository<UsuarioEntity, UUID>
               AND u.fechaSolicitudEliminacion < :limite
             """)
     List<UsuarioEntity> findPendingDeletionBefore(@Param("limite") Instant limite);
+
+    long count();
+
+    @Query("""
+            SELECT u.id, p.nombre, p.apellidos, p.carrera, u.fechaCreacion
+            FROM UsuarioEntity u
+            LEFT JOIN PerfilEntity p ON p.usuarioId = u.id
+            ORDER BY u.fechaCreacion DESC
+            """)
+    List<Object[]> findRecentSignups(Pageable pageable);
 }

@@ -46,4 +46,12 @@ public interface PerfilJpaRepository extends JpaRepository<PerfilEntity, UUID> {
     List<PerfilEntity> buscarPorNombreOCarrera(@Param("query") String query,
                                                 @Param("excluirUsuarioId") UUID excluirUsuarioId,
                                                 Pageable pageable);
+
+    @Query("""
+            SELECT p.carrera, COUNT(p)
+            FROM PerfilEntity p
+            WHERE p.carrera IS NOT NULL AND p.carrera <> ''
+            GROUP BY p.carrera
+            """)
+    List<Object[]> countByCarrera();
 }
