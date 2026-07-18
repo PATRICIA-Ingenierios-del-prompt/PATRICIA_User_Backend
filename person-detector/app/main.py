@@ -18,6 +18,7 @@ import io
 import logging
 import os
 import tempfile
+import time
 from pathlib import Path
 
 import httpx
@@ -133,13 +134,41 @@ def detectar_persona(img_array: np.ndarray) -> tuple[bool, float | None]:
 
 
 # ---------------------------------------------------------------------------
+# Warm-up
+# ---------------------------------------------------------------------------
+# La primera llamada a DeepFace.extract_faces por proceso construye el grafo
+# de TensorFlow (RetinaFace) — en Fargate frío eso tomó ~79s en producción,
+# muy por encima del timeout de 8s que usa el Java (PersonaDetectorAdapter),
+# así que la primera foto real de cada pod siempre fallaba. Se corre una
+# detección de descarte contra una imagen sintética en memoria al arrancar,
+# para que el grafo ya esté construido cuando llegue la primera foto real. No
+# necesita ser una cara: enforce_detection=False ejecuta el mismo código
+# (carga de pesos + build del grafo) igual sobre ruido.
+MODEL_WARM = False
+
+
+@app.on_event("startup")
+def warm_up() -> None:
+    global MODEL_WARM
+    dummy = np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8)
+    t0 = time.monotonic()
+    try:
+        detectar_persona(dummy)
+    except Exception:
+        log.exception("Warm-up del modelo falló; se atenderá en frío en la primera foto real.")
+    else:
+        MODEL_WARM = True
+        log.info("Warm-up del modelo completo en %.1fs", time.monotonic() - t0)
+
+
+# ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
 
 
 @app.get("/health", tags=["Admin"])
 def health():
-    return {"status": "ok", "detector": DETECTOR_BACKEND}
+    return {"status": "ok", "detector": DETECTOR_BACKEND, "modelo_listo": MODEL_WARM}
 
 
 @app.post("/detect", response_model=DetectResponse, tags=["Detección"])
